@@ -18,11 +18,14 @@ public class AgenteDecision extends SingleAgent{
     private ACLMessage[] inbox,outbox;
     private boolean exit;
     private int nivelBateria;
-    private String clave;
     private int status;
+    private String Agente_Radar,Agente_Scanner,Agente_GPS;
     
-    public AgenteDecision(AgentID aid, String clave) throws Exception {
+    public AgenteDecision(AgentID aid, String Nombre_Radar,String Nombre_Scanner,String Nombre_GPS) throws Exception {
             super(aid);
+            this.Agente_Radar=Nombre_Radar;
+            this.Agente_GPS=Nombre_GPS;
+            this.Agente_Scanner=Nombre_Scanner;
     }
     @Override
     public void init(){
