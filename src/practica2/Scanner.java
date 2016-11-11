@@ -12,9 +12,7 @@ import es.upv.dsic.gti_ia.core.SingleAgent;
  * @author joseccf
  */
 public class Scanner extends SingleAgent{
-    private final int ESCUCHAR=1, ENVIAR=3, FINALIZAR=4;
-    private ACLMessage inbox;
-    private ACLMessage outbox;
+    private final int ESCUCHAR=1, ENVIAR=2, FINALIZAR=3;
     private boolean exit;
     private int status;
     public Scanner(AgentID aid) throws Exception{
@@ -23,68 +21,59 @@ public class Scanner extends SingleAgent{
     
     @Override
     public void init(){
-          System.out.println("Agente(" +this.getName()+") iniciando");
-        status=ESCUCHAR;
-        inbox=null;
-        outbox=null;
-        exit=false;
+        System.out.println("Agente(" +this.getName()+") iniciando");
+        status = ESCUCHAR;
+        exit = false;
     }
 
+    /**
+     *@author pablo
+     *@author joseccf
+     */
     @Override
-    public void execute()  {
-          System.out.println("Agente(" +this.getName()+") ejecutandose");
+    public void execute(){
+        ACLMessage inbox;
+        ACLMessage outbox;
+        inbox = null;
+        outbox = null;
+        System.out.println("Agente(" +this.getName()+") ejecutandose");
         while(!exit){
-           switch(status){
+            switch(status){
                            
                 case ESCUCHAR:
-                {
-                    System.out.println("Agente(" +this.getName()+") Esperando datos");
-
-                   
-                    boolean repetir=true;
-                    while(repetir){
-                        try {
-                           inbox=receiveACLMessage();
-                           /*Json
-                           if(){ 
-                                status=ENVIAR;
-                                repetir=false;
-                           }*/
-                        } catch (InterruptedException ex) {
-                            System.err.println("Agente(" +this.getName()+") Error de comunicación");
-                            repetir=false;
-                            exit=true;
-                        }
+                    System.out.println("Agente(" +this.getName()+"): Esperando datos");
+                    try {
+                        inbox = receiveACLMessage();
+                        status = ENVIAR;
+                    } catch (InterruptedException ex) {
+                        System.err.println("Agente(" +this.getName()+"): Error de comunicación");
+                        exit = true;
                     }
-                }
+                    break;
 
-                break;
-
-               case ENVIAR:
-                   outbox=new ACLMessage();
-                   outbox.addReceiver(new AgentID("Agentedecision"));
+                case ENVIAR:
+                   outbox = new ACLMessage();
                    outbox.setSender(this.getAid());
-                   //Contenido recibido tras la llegada de los datos del radar.
-                   //outbox.setContent(..);
+                   outbox.addReceiver(new AgentID("Car"));
+                   outbox.setContent(inbox.getContent());
                    this.send(outbox);
-                   status=ESCUCHAR;
-                
-                   
-                break;
+                   status = ESCUCHAR;
+                   break;
                  
                 case FINALIZAR:
                     System.out.println("Agente(" +this.getName()+") Terminando Ejecución");
-
-                exit=true;
-                break;
-
+                    exit = true;
+                    break;
             }
         }
     }
     
+    /**
+     *@joseccf
+     */
     @Override
     public void finalize(){
-        System.out.println("Agente(" +this.getName()+") terminando");
-        super.finalize();
+          System.out.println("Agente(" +this.getName()+") terminando");
+          super.finalize();
     }
 }

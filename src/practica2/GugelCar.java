@@ -12,7 +12,7 @@ import es.upv.dsic.gti_ia.core.SingleAgent;
  *
  * @author joseccf
  */
-public class AgenteDecision extends SingleAgent{
+public class GugelCar extends SingleAgent{
     private final int IDENTIFICARSE=0, ESCUCHAR=1, PROCESAR=2, ENVIAR=3, FINALIZAR=4;
     private int matrizAuxiliar[][] = new int [1000] [1000];
     private ACLMessage[] inbox,outbox;
@@ -21,7 +21,7 @@ public class AgenteDecision extends SingleAgent{
     private int status;
     private String Agente_Radar,Agente_Scanner,Agente_GPS;
     
-    public AgenteDecision(AgentID aid, String Nombre_Radar,String Nombre_Scanner,String Nombre_GPS) throws Exception {
+    public GugelCar(AgentID aid, String Nombre_Radar,String Nombre_Scanner,String Nombre_GPS) throws Exception {
             super(aid);
             this.Agente_Radar=Nombre_Radar;
             this.Agente_GPS=Nombre_GPS;
