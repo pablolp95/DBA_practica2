@@ -34,8 +34,8 @@ public class Scanner extends SingleAgent{
     public void execute(){
         ACLMessage inbox;
         ACLMessage outbox;
-        inbox = null;
-        outbox = null;
+        inbox = new ACLMessage();
+        outbox = new ACLMessage();
         System.out.println("Agente(" +this.getName()+") ejecutandose");
         while(!exit){
             switch(status){

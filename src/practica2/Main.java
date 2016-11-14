@@ -17,9 +17,10 @@ public class Main {
     
     public static void main(String [ ] args) throws Exception
     {
-          String Nombre_Radar = "radar";
-          String Nombre_Scanner = "scanner";
-          String Nombre_GPS = "gps";
+        
+          String Nombre_Radar = "agenteRadar";
+          String Nombre_Scanner = "agenteScanner";
+          String Nombre_GPS = "agenteGPS";
           
           AgentsConnection.connect("isg2.ugr.es", 6000, "Girtab", "Gelman", "Orion", false);
           GugelCar car = new GugelCar(new AgentID("Car"), Nombre_Radar, Nombre_Scanner, Nombre_GPS);
@@ -27,10 +28,11 @@ public class Main {
           Radar radar = new Radar(new AgentID(Nombre_Radar));
           Scanner scanner = new Scanner(new AgentID(Nombre_Scanner));
           
-          car.start();
           radar.start();
           gps.start();
           scanner.start();
+          car.start();
+          
            
     }
 }
