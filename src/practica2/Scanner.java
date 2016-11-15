@@ -44,7 +44,7 @@ public class Scanner extends SingleAgent{
                 case ESCUCHAR:
                     try {
                         inbox = receiveACLMessage();
-                        status = ENVIAR;
+                        status = PROCESAR;
                     } catch (InterruptedException ex) {
                         System.err.println("Agente(" +this.getName()+"): Error de comunicación");
                         exit = true;
@@ -84,7 +84,7 @@ public class Scanner extends SingleAgent{
     }
     
     boolean decidirAccion(){
-        if(inbox.getSender().equals("Car") && inbox.getContent().equals("fin")){
+        if(inbox.getContent().equals("fin")){
             return true;
         }
         

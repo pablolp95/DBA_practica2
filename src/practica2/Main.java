@@ -23,7 +23,7 @@ public class Main {
         String map = "map1";
 
         AgentsConnection.connect("isg2.ugr.es", 6000, "Girtab", "Gelman", "Orion", false);
-        GugelCar car = new GugelCar(new AgentID("GugleCar"), nombreRadar, nombreScanner, nombreGPS, map);
+        GugelCar car = new GugelCar(new AgentID("Car"), nombreRadar, nombreScanner, nombreGPS, map);
         GPS gps = new GPS(new AgentID(nombreGPS));
         Radar radar = new Radar(new AgentID(nombreRadar));
         Scanner scanner = new Scanner(new AgentID(nombreScanner));

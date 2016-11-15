@@ -7,6 +7,7 @@ package practica2;
 
 import com.eclipsesource.json.Json;
 import com.eclipsesource.json.JsonObject;
+import com.eclipsesource.json.JsonObject.Member;
 import com.eclipsesource.json.JsonValue;
 import es.upv.dsic.gti_ia.core.ACLMessage;
 import es.upv.dsic.gti_ia.core.AgentID;
@@ -30,8 +31,8 @@ public class GugelCar extends SingleAgent{
     private int status;
     private String key;
     private String agenteRadar, agenteScanner, agenteGPS;
-    private ArrayList<Integer> datosRadar;
-    private ArrayList<Double> datosScanner;
+    private int [] datosRadar;
+    private double [] datosScanner;
     private String map;
     private Position position;
     private Accion accion;
@@ -41,9 +42,10 @@ public class GugelCar extends SingleAgent{
             this.agenteRadar = nombreRadar;
             this.agenteGPS = nombreGPS;
             this.agenteScanner = nombreScanner;
-            this.datosRadar = new ArrayList<>(25);
-            this.datosScanner = new ArrayList<>(25);
+            this.datosRadar = new int[25];
+            this.datosScanner = new double[25];
             this.map = map;
+            this.position = new Position();
             
             this.matrizAuxiliar = new int [1000][1000];
             for(int i=0;i<1000;i++){
@@ -89,7 +91,6 @@ public class GugelCar extends SingleAgent{
                     
                 case ESCUCHAR:
                     correcto = recibirMensajes();
-                    //System.out.println("Correcto:"+correcto);
                     if(correcto)
                         status = PROCESAR;
                     else
@@ -104,8 +105,10 @@ public class GugelCar extends SingleAgent{
                     
                 case ENVIAR:
                     enviarComando(comando);
-                    if(comando.equals("logout"))
+                    if(comando.equals("logout")){
                         status = FINALIZAR;
+                        System.out.println("Notificando desconexión");
+                    }
                     else
                         status = ESCUCHAR;
                     break;
@@ -154,27 +157,38 @@ public class GugelCar extends SingleAgent{
      * @author pablolp
      */
     boolean recibirMensajes(){
-        JsonObject objeto;
+JsonObject objeto;
         boolean correcto = true;
         ACLMessage inbox;
         try {
             for (int i = 0; i<4 && correcto; ++i){
                 inbox = receiveACLMessage();
-                if(inbox.getReceiver().equals(agenteRadar)){
-                    System.out.println("Mensaje recibido de radar: " + inbox.getContent());
-                    correcto = recibirRadar(inbox);
-                }
-                else if(inbox.getReceiver().equals(agenteScanner)){
-                    System.out.println("Mensaje recibido de scanner: " + inbox.getContent());
-                    correcto = recibirScanner(inbox);
-                }
-                else if(inbox.getReceiver().equals(agenteGPS)){
-                    System.out.println("Mensaje recibido de GPS: " + inbox.getContent());
-                    correcto = recibirGPS(inbox);
+                if(inbox.getContent().equals("CRASHED")){
+                    correcto = false;
                 }
                 else{
-                    System.out.println("Mensaje recibido de controlador: " + inbox.getContent());
-                    correcto = recibirControlador(inbox);
+                    objeto = Json.parse(inbox.getContent()).asObject();
+                    for (Member member : objeto) {
+                        String name = member.getName();
+                        JsonValue value = member.getValue();
+                        if(name.equals("radar")){
+                            System.out.println("Contenido del sensor radar: " + inbox.getContent());
+                            correcto = recibirRadar(inbox);
+                        }
+                        else if(name.equals("scanner")){
+                            System.out.println("Contenido del sensor scanner: " + inbox.getContent());
+                            correcto = recibirScanner(inbox);
+                        }
+                        else if(name.equals("gps")){
+                            System.out.println("Contenido del sensor GPS: " + inbox.getContent());
+                            correcto = recibirGPS(inbox);
+                        }
+                        else {
+                            System.out.println("Mensaje recibido de controlador: " + inbox.getContent());
+                            correcto = recibirControlador(inbox);
+                        }
+                    }
+                    
                 }
             }
             
@@ -240,7 +254,7 @@ public class GugelCar extends SingleAgent{
             JsonObject objeto = Json.parse(inbox.getContent()).asObject();
             int pos = 0;
             for (JsonValue j : objeto.get("radar").asArray()){
-                datosRadar.set(pos, j.asInt());
+                datosRadar[pos] = j.asInt();
                 pos++;
             }
         }
@@ -258,7 +272,7 @@ public class GugelCar extends SingleAgent{
             JsonObject objeto = Json.parse(inbox.getContent()).asObject();
             int pos = 0;
             for (JsonValue j : objeto.get("scanner").asArray()){
-                datosScanner.set(pos, j.asDouble());
+                datosScanner[pos] = j.asDouble();
                 pos++;
             }
         }
