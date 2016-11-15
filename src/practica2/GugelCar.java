@@ -14,167 +14,291 @@ import es.upv.dsic.gti_ia.core.SingleAgent;
 import java.util.ArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javafx.util.Pair;
 /**
  *
  * @author joseccf
+ * @author pablolp
+ * @author antoniojl
  */
 
 public class GugelCar extends SingleAgent{
-    Accion accion;
-    private final int IDENTIFICARSE=0, ESCUCHAR=1, PROCESAR=2, ENVIAR=3, FINALIZAR=4;
-    private int matrizAuxiliar[][] = new int [1000] [1000];
-    private ArrayList<ACLMessage> inbox=new ArrayList<ACLMessage>(4);
-    private ACLMessage outbox=new ACLMessage();
-    private JsonObject object;
+    private final int IDENTIFICARSE = 0, ESCUCHAR = 1, PROCESAR = 2, ENVIAR = 3, FINALIZAR = 4;
+    private int matrizAuxiliar[][];
     private boolean exit;
+    private boolean connected;
     private int nivelBateria;
     private int status;
     private String key;
-    private String Agente_Radar,Agente_Scanner,Agente_GPS;
-    private ArrayList<Integer> datos_radar=new ArrayList<Integer>(25);
-    private ArrayList<Double> datos_scanner=new ArrayList<Double>(25);
-    private Pair<Integer,Integer> datos_gps;
-    private String map="map1";
+    private String agenteRadar, agenteScanner, agenteGPS;
+    private ArrayList<Integer> datosRadar;
+    private ArrayList<Double> datosScanner;
+    private String map;
+    private Position position;
+    private Accion accion;
     
-    public GugelCar(AgentID aid, String Nombre_Radar,String Nombre_Scanner,String Nombre_GPS) throws Exception {
+    public GugelCar(AgentID aid, String nombreRadar, String nombreScanner, String nombreGPS, String map) throws Exception {
             super(aid);
-            this.Agente_Radar=Nombre_Radar;
-            this.Agente_GPS=Nombre_GPS;
-            this.Agente_Scanner=Nombre_Scanner;
+            this.agenteRadar = nombreRadar;
+            this.agenteGPS = nombreGPS;
+            this.agenteScanner = nombreScanner;
+            this.datosRadar = new ArrayList<>(25);
+            this.datosScanner = new ArrayList<>(25);
+            this.map = map;
+            
+            this.matrizAuxiliar = new int [1000][1000];
             for(int i=0;i<1000;i++){
                 for(int j=0;j<1000;j++){
                     this.matrizAuxiliar[i][j]=-1;
                 }
             }
     }
+    
+    /**
+     *
+     * @author pablolp
+     * @author joseccf
+     * @author antoniojl
+     */
     @Override
     public void init(){
-        System.out.println("Agente(" +this.getName()+") ARRANCANDO");
-        status=IDENTIFICARSE;
-        nivelBateria=0;
-        exit=false;
+        System.out.println("Agente(" +this.getName()+") Iniciando");
+        status = IDENTIFICARSE;
+        nivelBateria = 0;
+        exit = false;
+        connected = false;
         
     }
+
+    /**
+     *
+     * @author joseccf
+     * @author pablolp
+     * @author antoniojl
+     */
     @Override
     public void execute(){
+        String comando = null;
+        boolean correcto;
+        
         while(!exit){
             switch(status){
                 case IDENTIFICARSE:
-                    codificar(accion.login);
-                    this.outbox.setSender(this.getAid());
-                    this.outbox.addReceiver(new AgentID("Girtab"));
-                    this.outbox.setContent(this.object.toString());
-                    this.send(outbox);
-                    status=ESCUCHAR;
+                    enviarLogin();
+                    status = ESCUCHAR;
                     break;
+                    
                 case ESCUCHAR:
-                        try {
-                                                System.out.print("Escuchando ");
-
-                            inbox.set(0, receiveACLMessage());
-                            System.out.print("Escuchado");
+                    correcto = recibirMensajes();
+                    if(correcto)
+                        status = PROCESAR;
+                    else
+                        status = FINALIZAR;
+                    break;
                     
-                    decodificar(inbox.get(0));
-                    if(status!=IDENTIFICARSE){
-                        inbox.set(1, receiveACLMessage());
-                        inbox.set(2, receiveACLMessage());
-                        inbox.set(3, receiveACLMessage());
-                        for(int i=1;i<inbox.size();i++){
-                            decodificar(inbox.get(i));
-                        }   
-                        status=PROCESAR;
-                    }
-                } catch (InterruptedException ex) {
-                    Logger.getLogger(GugelCar.class.getName()).log(Level.SEVERE, null, ex);
-                }
-                break;
                 case PROCESAR:
-                    CalcularMovimiento();
-                    switch(accion){
-                        case objective_reached:
-                            status=FINALIZAR;
-                            break;
-                        default:
-                            status=ENVIAR;
-                            break;
-                }
-                break;
-                case ENVIAR:
-                    codificar(accion);
-                    outbox.addReceiver(new AgentID("Girtab"));
-                    outbox.setSender(this.getAid());
-                    this.send(outbox);
-                    status=ESCUCHAR;
-                break;
-                case FINALIZAR:
+                    comando = decidirMovimiento();
+                    status = ENVIAR;
+                    break;
                     
-                break;
+                case ENVIAR:
+                    enviarComando(comando);
+                    if(comando.equals("logout"))
+                        status = FINALIZAR;
+                    else
+                        status = ESCUCHAR;
+                    break;
+                    
+                case FINALIZAR:
+                    notificarSensores();
+                    exit = true;
+                    break;
 
             }
         }
     }
+    
+    /**
+     * @author joseccf
+     */
     @Override
     public void finalize(){
-          System.out.println("Agente(" +this.getName()+") terminando");
+          System.out.println("Agente(" +this.getName()+") Terminando");
           super.finalize();
     }
-    private void CalcularMovimiento(){
+    
+    /**
+     * @author pablolp
+     */
+    void enviarLogin(){
+        String mensaje;
+        ACLMessage outbox;
+        JsonObject objeto = new JsonObject();
         
-    }
-
-    private void decodificar(ACLMessage get) {
-        int index=0;
-        JsonObject objeto=Json.parse(get.getContent()).asObject();
-        if((get.getContent().equals("CRASHED")) || objeto.get("result").asString()=="BAD_MAP" || objeto.get("result").asString()=="BAD_PROTOCOL" || objeto.get("result").asString()=="BAD_KEY" ){
-            this.status=IDENTIFICARSE;
-        }
-        else if(get.getSender().toString()==this.Agente_Radar){
-            for(JsonValue j:objeto.get("radar").asArray()){
-                this.datos_radar.set(index, j.asInt());
-               index++;
-            }
-        }
-        else if(get.getSender().toString()==this.Agente_Scanner){
-            for(JsonValue j:objeto.get("scanner").asArray()){
-                this.datos_scanner.set(index, j.asDouble());
-               index++;
-            }
-        }
-        else if(get.getSender().toString()==this.Agente_GPS){
-          this.datos_gps=new Pair(objeto.get("x").asInt(),objeto.get("y").asInt());
-        }
-        else {
-            if(!objeto.get("result").equals("OK")){
-                this.key=objeto.get("result").toString();
+        objeto.add("command","login");
+        objeto.add("world", map);
+        objeto.add("gps", agenteGPS);
+        objeto.add("radar", agenteRadar);
+        objeto.add("scanner", agenteScanner);
+        mensaje = objeto.toString();
         
-            }
-        }  
+        outbox = new ACLMessage();
+        outbox.setSender(this.getAid());
+        outbox.setReceiver(new AgentID("Girtab"));
+        outbox.setContent(mensaje);
+        this.send(outbox);
     }
     
-    public void codificar(Accion Command){
-        object=new JsonObject() ;
-        String command=Command.toString();
-        System.out.print("Comando recibido "+ command +"\n");
-        switch(command){
-            case "login":
-                this.object.add("command", command);
-                this.object.add("world", this.map);
-                this.object.add("radar", this.Agente_Radar);
-                this.object.add("scanner", this.Agente_Scanner);
-                this.object.add("gps", this.Agente_GPS);
+    /**
+     * @author pablolp
+     */
+    boolean recibirMensajes(){
+        JsonObject objeto;
+        boolean correcto = true;
+        ACLMessage inbox;
+        try {
+            for (int i = 0; i<4 && correcto; ++i){
+                inbox = receiveACLMessage();
+                if(inbox.getReceiver().equals(agenteRadar)){
+                    correcto = recibirRadar(inbox);
+                }
+                else if(inbox.getReceiver().equals(agenteScanner)){
+                    correcto = recibirScanner(inbox);
+                }
+                else if(inbox.getReceiver().equals(agenteGPS)){
+                    correcto = recibirGPS(inbox);
+                }
+                else{
+                    correcto = recibirControlador(inbox);
+                }
+            }
+            
+        } catch (InterruptedException ex) {
+            Logger.getLogger(GugelCar.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        return correcto;
+    }
+    
+    /**
+     * @author pablolp
+     */
+    String decidirMovimiento(){
+        return null;
+    }
+    
+    /**
+     * @author pablolp
+     */
+    void enviarComando(String comando){
+        JsonObject objeto = new JsonObject();
+        ACLMessage outbox;
                 
-            break; 
-            default :
-                this.object.add("command", command);
-                this.object.add("key",this.key);
-            break;
-
-        }
-
+        objeto.add("command",comando);
+        objeto.add("key", this.key);
+        comando = objeto.toString();
+        
+        outbox = new ACLMessage();
+        outbox.setSender(this.getAid());
+        outbox.setReceiver(new AgentID("Girtab"));
+        outbox.setContent(comando);
+        this.send(outbox);
     }
     
+    /**
+     * @author pablolp
+     */
+    void notificarSensores(){
+        ACLMessage outbox;
+        
+        outbox = new ACLMessage();
+        outbox.setSender(this.getAid());
+        outbox.setContent("fin");
+        
+        outbox.setReceiver(new AgentID(agenteGPS));
+        this.send(outbox);
+        
+        outbox.setReceiver(new AgentID(agenteRadar));
+        this.send(outbox);
+        
+        outbox.setReceiver(new AgentID(agenteScanner));
+        this.send(outbox);  
+    }
     
+    /**
+     * @author pablolp
+     */
+    boolean recibirRadar(ACLMessage inbox){
+        if(inbox.getContent().equals("CRASHED")){
+            return false;
+        }
+        else{
+            JsonObject objeto = Json.parse(inbox.getContent()).asObject();
+            int pos = 0;
+            for (JsonValue j : objeto.get("radar").asArray()){
+                datosRadar.set(pos, j.asInt());
+                pos++;
+            }
+        }
+        return true;
+    }
     
+    /**
+     * @author pablolp
+     */
+    boolean recibirScanner(ACLMessage inbox){
+        if(inbox.getContent().equals("CRASHED")){
+            return false;
+        }
+        else{
+            JsonObject objeto = Json.parse(inbox.getContent()).asObject();
+            int pos = 0;
+            for (JsonValue j : objeto.get("scanner").asArray()){
+                datosScanner.set(pos, j.asDouble());
+                pos++;
+            }
+        }
+        return true;
+    }
     
+    /**
+     * @author pablolp
+     */
+    boolean recibirGPS(ACLMessage inbox){
+        if(inbox.getContent().equals("CRASHED")){
+            return false;
+        }
+        else{
+            JsonObject objeto = Json.parse(inbox.getContent()).asObject().get("gps").asObject();
+            
+            position.setX(objeto.get("x").asInt());
+            position.setY(objeto.get("y").asInt());
+        }
+        
+        return true;
+    }
+    
+    /**
+     * @author pablolp
+     */
+    boolean recibirControlador(ACLMessage inbox){
+        boolean correcto;
+        JsonObject objeto = Json.parse(inbox.getContent()).asObject();
+        //Sino me he conectado aún, solo puedo recibir tres respuestas
+        if(!this.connected){
+            if(objeto.get("result").asString().equals("BAD_MAP") || objeto.get("result").asString().equals("BAD_PROTOCOL"))
+                correcto = false;
+            else{
+                this.key = objeto.get("result").asString();
+                this.connected = true;
+                correcto = true;
+            }
+        }
+        else{
+            if(objeto.get("result").asString().equals("OK"))
+                correcto = true;
+            else{
+                correcto = false;
+            }
+        }
+        return true;
+    }
 }

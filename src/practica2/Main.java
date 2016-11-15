@@ -16,23 +16,21 @@ import es.upv.dsic.gti_ia.core.AgentsConnection;
 public class Main {
     
     public static void main(String [ ] args) throws Exception
-    {
-        
-          String Nombre_Radar = "agenteRadar";
-          String Nombre_Scanner = "agenteScanner";
-          String Nombre_GPS = "agenteGPS";
-          
-          AgentsConnection.connect("isg2.ugr.es", 6000, "Girtab", "Gelman", "Orion", false);
-          GugelCar car = new GugelCar(new AgentID("Car"), Nombre_Radar, Nombre_Scanner, Nombre_GPS);
-          GPS gps = new GPS(new AgentID(Nombre_GPS));
-          Radar radar = new Radar(new AgentID(Nombre_Radar));
-          Scanner scanner = new Scanner(new AgentID(Nombre_Scanner));
-          
-          radar.start();
-          gps.start();
-          scanner.start();
-          car.start();
-          
+    {   
+        String nombreRadar = "agenteRadar";
+        String nombreScanner = "agenteScanner";
+        String nombreGPS = "agenteGPS";
+
+        AgentsConnection.connect("isg2.ugr.es", 6000, "Girtab", "Gelman", "Orion", false);
+        GugelCar car = new GugelCar(new AgentID("GugleCar"), nombreRadar, nombreScanner, nombreGPS, "map1");
+        GPS gps = new GPS(new AgentID(nombreGPS));
+        Radar radar = new Radar(new AgentID(nombreRadar));
+        Scanner scanner = new Scanner(new AgentID(nombreScanner));
+
+        car.start(); 
+        gps.start();
+        radar.start();
+        scanner.start();
            
     }
 }

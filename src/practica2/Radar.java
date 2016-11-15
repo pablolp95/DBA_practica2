@@ -12,9 +12,12 @@ import es.upv.dsic.gti_ia.core.SingleAgent;
  * @author joseccf
  */
 public class Radar extends SingleAgent{
-    private final int ESCUCHAR=1, ENVIAR=2, FINALIZAR=3;
+    private final int ESCUCHAR = 1, ENVIAR = 2, PROCESAR = 3, FINALIZAR = 4;
     private boolean exit;
     private int status;
+    private ACLMessage inbox;
+    private ACLMessage outbox;
+    
     public Radar(AgentID aid) throws Exception{
         super(aid);
     }
@@ -32,16 +35,13 @@ public class Radar extends SingleAgent{
      */
     @Override
     public void execute(){
-        ACLMessage inbox;
-        ACLMessage outbox;
         inbox = null;
         outbox = null;
         System.out.println("Agente(" +this.getName()+") ejecutandose");
+        
         while(!exit){
-            switch(status){
-                           
+            switch(status){           
                 case ESCUCHAR:
-                    System.out.println("Agente(" +this.getName()+"): Esperando datos");
                     try {
                         inbox = receiveACLMessage();
                         status = ENVIAR;
@@ -50,7 +50,14 @@ public class Radar extends SingleAgent{
                         exit = true;
                     }
                     break;
-
+                
+                case PROCESAR:
+                    exit = decidirAccion();
+                    if(exit)
+                        status = FINALIZAR;
+                    else
+                        status = ENVIAR;
+                    break;
                 case ENVIAR:
                    outbox = new ACLMessage();
                    outbox.setSender(this.getAid());
@@ -61,7 +68,6 @@ public class Radar extends SingleAgent{
                    break;
                  
                 case FINALIZAR:
-                    System.out.println("Agente(" +this.getName()+") Terminando Ejecución");
                     exit = true;
                     break;
             }
@@ -75,5 +81,13 @@ public class Radar extends SingleAgent{
     public void finalize(){
           System.out.println("Agente(" +this.getName()+") terminando");
           super.finalize();
+    }
+    
+    boolean decidirAccion(){
+        if(inbox.getSender().equals("Car") && inbox.getContent().equals("fin")){
+            return true;
+        }
+        
+        return false;
     }
 }
