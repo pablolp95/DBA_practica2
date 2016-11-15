@@ -89,6 +89,7 @@ public class GugelCar extends SingleAgent{
                     
                 case ESCUCHAR:
                     correcto = recibirMensajes();
+                    //System.out.println("Correcto:"+correcto);
                     if(correcto)
                         status = PROCESAR;
                     else
@@ -97,6 +98,7 @@ public class GugelCar extends SingleAgent{
                     
                 case PROCESAR:
                     comando = decidirMovimiento();
+                    //comando = "logout";
                     status = ENVIAR;
                     break;
                     
@@ -159,15 +161,19 @@ public class GugelCar extends SingleAgent{
             for (int i = 0; i<4 && correcto; ++i){
                 inbox = receiveACLMessage();
                 if(inbox.getReceiver().equals(agenteRadar)){
+                    System.out.println("Mensaje recibido de radar: " + inbox.getContent());
                     correcto = recibirRadar(inbox);
                 }
                 else if(inbox.getReceiver().equals(agenteScanner)){
+                    System.out.println("Mensaje recibido de scanner: " + inbox.getContent());
                     correcto = recibirScanner(inbox);
                 }
                 else if(inbox.getReceiver().equals(agenteGPS)){
+                    System.out.println("Mensaje recibido de GPS: " + inbox.getContent());
                     correcto = recibirGPS(inbox);
                 }
                 else{
+                    System.out.println("Mensaje recibido de controlador: " + inbox.getContent());
                     correcto = recibirControlador(inbox);
                 }
             }
