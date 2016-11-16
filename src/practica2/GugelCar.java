@@ -6,12 +6,16 @@
 package practica2;
 
 import com.eclipsesource.json.Json;
+import com.eclipsesource.json.JsonArray;
 import com.eclipsesource.json.JsonObject;
 import com.eclipsesource.json.JsonObject.Member;
 import com.eclipsesource.json.JsonValue;
 import es.upv.dsic.gti_ia.core.ACLMessage;
 import es.upv.dsic.gti_ia.core.AgentID;
 import es.upv.dsic.gti_ia.core.SingleAgent;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -120,6 +124,13 @@ public class GugelCar extends SingleAgent{
                 case FINALIZAR:
                     notificarSensores();
                     exit = true;
+            
+                    try {
+                        generarImagen();
+                    } catch (IOException ex) {
+                        Logger.getLogger(GugelCar.class.getName()).log(Level.SEVERE, null, ex);
+                    }
+            
                     System.out.println("Notificado la desconexión");
                     break;
 
@@ -209,6 +220,8 @@ public class GugelCar extends SingleAgent{
         }
         return correcto;
     }
+    
+    
     
     /**
      * @author pablolp
@@ -443,4 +456,35 @@ public class GugelCar extends SingleAgent{
         }
         return true;
     }
+    
+    /**
+     * @author antoniojl
+     */
+    void generarImagen() throws FileNotFoundException, IOException{
+        ACLMessage inbox;
+        try {
+            
+            System.out.println("Recibiendo traza");
+            inbox = receiveACLMessage();
+            JsonObject objeto2 = Json.parse(inbox.getContent()).asObject();
+            if(objeto2.get("result").asString().equals("OK")){
+                inbox = receiveACLMessage();
+                JsonObject objeto = Json.parse(inbox.getContent()).asObject();
+                JsonArray ja=objeto.get("trace").asArray();
+                byte data[]=new byte[ja.size()];
+                for(int i=0;i<data.length;i++){
+                    data[i]=(byte) ja.get(i).asInt();
+                }
+                FileOutputStream fos=new FileOutputStream("images/traza-"+this.map+".png");
+                fos.write(data);
+                fos.close();
+                System.out.println("Traza Guardada");
+            }
+        } catch (InterruptedException ex) {
+            Logger.getLogger(GugelCar.class.getName()).log(Level.SEVERE, null, ex);
+        }
+
+    }
+    
+    
 }
