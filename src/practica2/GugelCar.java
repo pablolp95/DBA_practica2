@@ -31,22 +31,27 @@ public class GugelCar extends SingleAgent{
     private int status;
     private String key;
     private String agenteRadar, agenteScanner, agenteGPS;
-    private int [] datosRadar;
-    private double [] datosScanner;
+    private int [][] datosRadar;
+    private double [][] datosScanner;
     private String map;
     private Position position;
     private Accion accion;
+    private boolean conectedNow;
+    
+    /* @author pablolp
+     * @author joseccf
+     * @author antoniojl
+     */
     
     public GugelCar(AgentID aid, String nombreRadar, String nombreScanner, String nombreGPS, String map) throws Exception {
             super(aid);
             this.agenteRadar = nombreRadar;
             this.agenteGPS = nombreGPS;
             this.agenteScanner = nombreScanner;
-            this.datosRadar = new int[25];
-            this.datosScanner = new double[25];
+            this.datosRadar = new int[5][5];
+            this.datosScanner = new double[5][5];
             this.map = map;
             this.position = new Position();
-            
             this.matrizAuxiliar = new int [1000][1000];
             for(int i=0;i<1000;i++){
                 for(int j=0;j<1000;j++){
@@ -99,7 +104,7 @@ public class GugelCar extends SingleAgent{
                     
                 case PROCESAR:
                     comando = decidirMovimiento();
-                    //comando = "logout";
+                    comando = "logout";
                     status = ENVIAR;
                     break;
                     
@@ -122,8 +127,9 @@ public class GugelCar extends SingleAgent{
         }
     }
     
-    /**
+    /* @author pablolp
      * @author joseccf
+     * @author antoniojl
      */
     @Override
     public void finalize(){
@@ -133,6 +139,8 @@ public class GugelCar extends SingleAgent{
     
     /**
      * @author pablolp
+     * @author joseccf
+     * @author antoniojl
      */
     void enviarLogin(){
         String mensaje;
@@ -153,9 +161,11 @@ public class GugelCar extends SingleAgent{
         this.send(outbox);
     }
     
-    /**
-     * @author pablolp
+    /* @author pablolp
+     * @author joseccf
+     * @author antoniojl
      */
+    
     boolean recibirMensajes(){
 JsonObject objeto;
         boolean correcto = true;
@@ -171,21 +181,23 @@ JsonObject objeto;
                     for (Member member : objeto) {
                         String name = member.getName();
                         JsonValue value = member.getValue();
-                        if(name.equals("radar")){
-                            System.out.println("Contenido del sensor radar: " + inbox.getContent());
-                            correcto = recibirRadar(inbox);
-                        }
-                        else if(name.equals("scanner")){
-                            System.out.println("Contenido del sensor scanner: " + inbox.getContent());
-                            correcto = recibirScanner(inbox);
-                        }
-                        else if(name.equals("gps")){
-                            System.out.println("Contenido del sensor GPS: " + inbox.getContent());
-                            correcto = recibirGPS(inbox);
-                        }
-                        else {
-                            System.out.println("Mensaje recibido de controlador: " + inbox.getContent());
-                            correcto = recibirControlador(inbox);
+                        switch (name) {
+                            case "radar":
+                                System.out.println("Contenido del sensor radar: " + inbox.getContent());
+                                correcto = recibirRadar(inbox);
+                                break;
+                            case "scanner":
+                                System.out.println("Contenido del sensor scanner: " + inbox.getContent());
+                                correcto = recibirScanner(inbox);
+                                break;
+                            case "gps":
+                                System.out.println("Contenido del sensor GPS: " + inbox.getContent());
+                                correcto = recibirGPS(inbox);
+                                break;
+                            default:
+                                System.out.println("Mensaje recibido de controlador: " + inbox.getContent());
+                                correcto = recibirControlador(inbox);
+                                break;
                         }
                     }
                     
@@ -200,13 +212,33 @@ JsonObject objeto;
     
     /**
      * @author pablolp
+     * @author joseccf
      */
     String decidirMovimiento(){
+        if(this.nivelBateria == 0){ //Comprobamos si es la primera vez que vamos a calcular un movimiento, si es así repostamos.
+            this.nivelBateria = 100;
+            return Accion.refuel.toString();
+        }
+        else{
+            if(this.nivelBateria == 1){
+                this.nivelBateria = 100;
+                return Accion.refuel.toString();
+            }    
+            else{//Decision
+            
+                
+                
+            nivelBateria--;    
+            }
+        }
         return null;
+        
     }
     
     /**
      * @author pablolp
+     * @author joseccf
+     * @author antoniojl
      */
     void enviarComando(String comando){
         JsonObject objeto = new JsonObject();
@@ -243,45 +275,63 @@ JsonObject objeto;
         this.send(outbox);  
     }
     
-    /**
-     * @author pablolp
+    /* @author pablolp
+     * @author joseccf
+     *
      */
-    boolean recibirRadar(ACLMessage inbox){
+        boolean recibirRadar(ACLMessage inbox){
         if(inbox.getContent().equals("CRASHED")){
             return false;
         }
         else{
             JsonObject objeto = Json.parse(inbox.getContent()).asObject();
-            int pos = 0;
+            int posx = 0;
+            int posy =0;
             for (JsonValue j : objeto.get("radar").asArray()){
-                datosRadar[pos] = j.asInt();
-                pos++;
+                
+                datosRadar[posy][posx] = j.asInt();
+                posx++;
+                
+                if(posx == 5){
+                    posx = 0;
+                    posy++;
+                }
             }
         }
         return true;
     }
     
-    /**
-     * @author pablolp
+    /* @author pablolp
+     * @author joseccf
+     *
      */
+    
     boolean recibirScanner(ACLMessage inbox){
         if(inbox.getContent().equals("CRASHED")){
             return false;
         }
         else{
             JsonObject objeto = Json.parse(inbox.getContent()).asObject();
-            int pos = 0;
+            int posx=0,posy = 0;
             for (JsonValue j : objeto.get("scanner").asArray()){
-                datosScanner[pos] = j.asDouble();
-                pos++;
+                datosScanner[posy][posx] = j.asDouble();              
+                posx++;
+                
+                if(posx == 5){
+                    posx = 0;
+                    posy++;
+                }
             }
         }
+                
+
         return true;
     }
-    
-    /**
-     * @author pablolp
+    /* @author pablolp
+     * @author joseccf
+     *
      */
+    
     boolean recibirGPS(ACLMessage inbox){
         if(inbox.getContent().equals("CRASHED")){
             return false;
@@ -298,6 +348,7 @@ JsonObject objeto;
     
     /**
      * @author pablolp
+     * @author joseccf
      */
     boolean recibirControlador(ACLMessage inbox){
         boolean correcto;
