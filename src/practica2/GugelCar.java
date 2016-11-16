@@ -35,7 +35,6 @@ public class GugelCar extends SingleAgent{
     private double [][] datosScanner;
     private String map;
     private Position position;
-    private Accion accion;
     private boolean conectedNow;
     
     /* @author pablolp
@@ -104,7 +103,7 @@ public class GugelCar extends SingleAgent{
                     
                 case PROCESAR:
                     comando = decidirMovimiento();
-                    comando = "logout";
+                    //comando = "logout";
                     status = ENVIAR;
                     break;
                     
@@ -121,6 +120,7 @@ public class GugelCar extends SingleAgent{
                 case FINALIZAR:
                     notificarSensores();
                     exit = true;
+                    System.out.println("Notificado la desconexión");
                     break;
 
             }
@@ -167,7 +167,7 @@ public class GugelCar extends SingleAgent{
      */
     
     boolean recibirMensajes(){
-JsonObject objeto;
+        JsonObject objeto;
         boolean correcto = true;
         ACLMessage inbox;
         try {
@@ -213,6 +213,7 @@ JsonObject objeto;
     /**
      * @author pablolp
      * @author joseccf
+     * @author antoniojl
      */
     String decidirMovimiento(){
         if(this.nivelBateria == 0){ //Comprobamos si es la primera vez que vamos a calcular un movimiento, si es así repostamos.
@@ -225,14 +226,84 @@ JsonObject objeto;
                 return Accion.refuel.toString();
             }    
             else{//Decision
-            
-                
-                
-            nivelBateria--;    
+                double mejorOpcion=1000000;
+                int iMejor = 0,jMejor = 0;
+                for(int i=1;i<datosScanner[i].length-1;i++){
+                    for (int j=1;j<datosScanner[j].length-1;j++){
+                        if(datosRadar[i][j]==2){
+                            mejorOpcion=0;
+                            iMejor=i;
+                            jMejor=j;
+                        }
+                        /*else if(i==1 && j==1 && datosRadar[i][j]!=1){
+                            mejorOpcion= datosScanner[i][j];
+                            iMejor=i;
+                            jMejor=j;
+                        }*/
+                        else if(mejorOpcion>datosScanner[i][j]/*+this.matrizAuxiliar[i][j]*/ && i!=2 && j!=2
+                                && datosRadar[i][j]!=1){
+                            mejorOpcion=datosScanner[i][j];
+                            iMejor=i;
+                            jMejor=j;
+                        }
+                    }
+                }
+                System.out.println(mejorOpcion);
+                System.out.println(datosRadar[jMejor][iMejor]);
+                System.out.println(this.nivelBateria);
+                Accion a = null;
+                //obtener movimiento
+                if(mejorOpcion==0){
+                    a=Accion.objective_reached;
+                    System.out.println("Objetivo alcanzado.");
+                    return "logout";
+                }
+                else a=obtenerMovimiento(iMejor,jMejor);
+                this.nivelBateria--;    
+                return a.toString();
             }
         }
-        return null;
         
+    }
+    
+    
+    /**
+     * @author antoniojl
+     */
+    Accion obtenerMovimiento(int iMejor, int jMejor){
+        Accion a = null;
+        if(iMejor==1){
+                    if(jMejor==1){
+                        a=Accion.moveNW;
+                    }
+                    else if(jMejor==2){
+                        a=Accion.moveN;
+                    }
+                    else if(jMejor==3){
+                        a=Accion.moveNE;
+                    }
+
+                }  
+                else if(iMejor==2){
+                    if(jMejor==1){
+                        a=Accion.moveW;
+                    }
+                    else if(jMejor==3){
+                        a=Accion.moveE;
+                    }
+                }
+                else if(iMejor==3){
+                    if(jMejor==1){
+                        a=Accion.moveSW;
+                    }
+                    else if(jMejor==2){
+                        a=Accion.moveS;
+                    }
+                    else if(jMejor==3){
+                        a=Accion.moveSE;
+                    }
+                }
+        return a;
     }
     
     /**
