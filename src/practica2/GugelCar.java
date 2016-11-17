@@ -28,7 +28,7 @@ import java.util.logging.Logger;
 
 public class GugelCar extends SingleAgent{
     private final int IDENTIFICARSE = 0, ESCUCHAR = 1, PROCESAR = 2, ENVIAR = 3, FINALIZAR = 4;
-    private int matrizAuxiliar[][];
+    private float matrizAuxiliar[][];
     private boolean exit;
     private boolean connected;
     private int nivelBateria;
@@ -55,10 +55,10 @@ public class GugelCar extends SingleAgent{
             this.datosScanner = new double[5][5];
             this.map = map;
             this.position = new Position();
-            this.matrizAuxiliar = new int [1000][1000];
+            this.matrizAuxiliar = new float [1000][1000];
             for(int i=0;i<1000;i++){
                 for(int j=0;j<1000;j++){
-                    this.matrizAuxiliar[i][j]=-1;
+                    this.matrizAuxiliar[i][j]=(float) -10.0;
                 }
             }
     }
@@ -229,52 +229,43 @@ public class GugelCar extends SingleAgent{
      * @author antoniojl
      */
     String decidirMovimiento(){
-        if(this.nivelBateria == 0){ //Comprobamos si es la primera vez que vamos a calcular un movimiento, si es así repostamos.
+        int x=this.position.getX(),y=this.position.getY();
+        if(this.nivelBateria <= 1){
             this.nivelBateria = 100;
             return Accion.refuel.toString();
-        }
-        else{
-            if(this.nivelBateria == 1){
-                this.nivelBateria = 100;
-                return Accion.refuel.toString();
-            }    
-            else{//Decision
-                double mejorOpcion=1000000;
-                int iMejor = 0,jMejor = 0;
-                for(int i=1;i<datosScanner[i].length-1;i++){
-                    for (int j=1;j<datosScanner[j].length-1;j++){
-                        if(datosRadar[i][j]==2){
-                            mejorOpcion=0;
-                            iMejor=i;
-                            jMejor=j;
-                        }
-                        /*else if(i==1 && j==1 && datosRadar[i][j]!=1){
-                            mejorOpcion= datosScanner[i][j];
-                            iMejor=i;
-                            jMejor=j;
-                        }*/
-                        else if(mejorOpcion>datosScanner[i][j]/*+this.matrizAuxiliar[i][j]*/ && i!=2 && j!=2
-                                && datosRadar[i][j]!=1){
-                            mejorOpcion=datosScanner[i][j];
-                            iMejor=i;
-                            jMejor=j;
-                        }
+        }    
+        else{//Decision
+            double mejorOpcion=10000;
+            int iMejor = 0,jMejor = 0;
+            for(int i=1;i<datosScanner[i].length-1;i++){
+                for (int j=1;j<datosScanner[j].length-1;j++){
+                    if(datosRadar[i][j]==2){
+                        mejorOpcion=0;
+                        iMejor=i;
+                        jMejor=j;
+                    }
+                    else if(datosRadar[i][j]==0 && 
+                            mejorOpcion>(datosScanner[i][j]+this.matrizAuxiliar[y+i-2][x+j-2])
+                            && !(i==2 && j==2)){
+                        mejorOpcion=datosScanner[i][j]+this.matrizAuxiliar[y+i-2][x+j-2];
+                        iMejor=i;
+                        jMejor=j;
                     }
                 }
-                System.out.println(mejorOpcion);
-                System.out.println(datosRadar[jMejor][iMejor]);
-                System.out.println(this.nivelBateria);
-                Accion a = null;
-                //obtener movimiento
-                if(mejorOpcion==0){
-                    a=Accion.objective_reached;
-                    System.out.println("Objetivo alcanzado.");
-                    return "logout";
-                }
-                else a=obtenerMovimiento(iMejor,jMejor);
-                this.nivelBateria--;    
-                return a.toString();
             }
+            System.out.println(datosScanner[jMejor][iMejor]);
+            System.out.println(this.nivelBateria);
+            Accion a = null;
+            //obtener movimiento
+            if(mejorOpcion==0){
+                System.out.println("Objetivo alcanzado.");
+                return "logout";
+            }
+            else a=obtenerMovimiento(iMejor,jMejor);
+            System.out.println(this.matrizAuxiliar[y][x]);
+            this.matrizAuxiliar[y+iMejor-2][x+jMejor-2]+=3.0;
+            this.nivelBateria--;    
+            return a.toString();
         }
         
     }

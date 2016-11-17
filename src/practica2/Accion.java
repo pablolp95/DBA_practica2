@@ -10,5 +10,5 @@ package practica2;
  * @author joseccf
  */
 public enum Accion {
-    moveS,moveN,moveW,moveE,moveSE,moveSW,moveNE,moveNW,logout,login,refuel,objective_reached;
+    moveS,moveN,moveW,moveE,moveSE,moveSW,moveNE,moveNW,logout,login,refuel;
 }
