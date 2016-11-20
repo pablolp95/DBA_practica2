@@ -17,6 +17,8 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Map;
+import java.util.TreeMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 /**
@@ -28,9 +30,7 @@ import java.util.logging.Logger;
 
 public class GugelCar extends SingleAgent{
     private final int IDENTIFICARSE = 0, ESCUCHAR = 1, PROCESAR = 2, ENVIAR = 3, FINALIZAR = 4;
-    private float matrizAuxiliar[][];
     private boolean exit;
-    private boolean connected;
     private int nivelBateria;
     private int status;
     private String key;
@@ -39,7 +39,10 @@ public class GugelCar extends SingleAgent{
     private double [][] datosScanner;
     private String map;
     private Position position;
-    private boolean conectedNow;
+    private boolean connected;
+    private boolean disconnect;
+    private ArrayList<String> comandos;
+    int accion = 0;
     
     /* @author pablolp
      * @author joseccf
@@ -55,12 +58,9 @@ public class GugelCar extends SingleAgent{
             this.datosScanner = new double[5][5];
             this.map = map;
             this.position = new Position();
-            this.matrizAuxiliar = new float [1000][1000];
-            for(int i=0;i<1000;i++){
-                for(int j=0;j<1000;j++){
-                    this.matrizAuxiliar[i][j]=(float) -10.0;
-                }
-            }
+            this.connected = false;
+            this.disconnect = false;
+            this.comandos = new ArrayList();
     }
     
     /**
@@ -75,7 +75,6 @@ public class GugelCar extends SingleAgent{
         status = IDENTIFICARSE;
         nivelBateria = 0;
         exit = false;
-        connected = false;
         
     }
 
@@ -107,6 +106,7 @@ public class GugelCar extends SingleAgent{
                     
                 case PROCESAR:
                     comando = decidirMovimiento();
+                    System.out.println(comando);
                     //comando = "logout";
                     status = ENVIAR;
                     break;
@@ -115,10 +115,15 @@ public class GugelCar extends SingleAgent{
                     enviarComando(comando);
                     if(comando.equals("logout")){
                         status = FINALIZAR;
+                        disconnect = true;
                         System.out.println("Notificando desconexión");
                     }
-                    else
+                    else{
                         status = ESCUCHAR;
+                        nivelBateria--;
+                        accion++;
+                        System.out.println("Numero de accion: " + accion);
+                    }
                     break;
                     
                 case FINALIZAR:
@@ -184,35 +189,30 @@ public class GugelCar extends SingleAgent{
         try {
             for (int i = 0; i<4 && correcto; ++i){
                 inbox = receiveACLMessage();
-                if(inbox.getContent().equals("CRASHED")){
-                    correcto = false;
-                }
-                else{
-                    objeto = Json.parse(inbox.getContent()).asObject();
-                    for (Member member : objeto) {
-                        String name = member.getName();
-                        JsonValue value = member.getValue();
-                        switch (name) {
-                            case "radar":
-                                System.out.println("Contenido del sensor radar: " + inbox.getContent());
-                                correcto = recibirRadar(inbox);
-                                break;
-                            case "scanner":
-                                System.out.println("Contenido del sensor scanner: " + inbox.getContent());
-                                correcto = recibirScanner(inbox);
-                                break;
-                            case "gps":
-                                System.out.println("Contenido del sensor GPS: " + inbox.getContent());
-                                correcto = recibirGPS(inbox);
-                                break;
-                            default:
-                                System.out.println("Mensaje recibido de controlador: " + inbox.getContent());
-                                correcto = recibirControlador(inbox);
-                                break;
-                        }
+
+                objeto = Json.parse(inbox.getContent()).asObject();
+                for (Member member : objeto) {
+                    String name = member.getName();
+                    JsonValue value = member.getValue();
+                    switch (name) {
+                        case "radar":
+                            System.out.println("Contenido del sensor radar: " + inbox.getContent());
+                            correcto = recibirRadar(inbox);
+                            break;
+                        case "scanner":
+                            System.out.println("Contenido del sensor scanner: " + inbox.getContent());
+                            correcto = recibirScanner(inbox);
+                            break;
+                        case "gps":
+                            System.out.println("Contenido del sensor GPS: " + inbox.getContent());
+                            correcto = recibirGPS(inbox);
+                            break;
+                        default:
+                            System.out.println("Mensaje recibido de controlador: " + inbox.getContent());
+                            correcto = recibirControlador(inbox);
+                            break;
                     }
-                    
-                }
+                }    
             }
             
         } catch (InterruptedException ex) {
@@ -229,85 +229,58 @@ public class GugelCar extends SingleAgent{
      * @author antoniojl
      */
     String decidirMovimiento(){
-        int x=this.position.getX(),y=this.position.getY();
+        String comando = null;
+        Position posOrigen = new Position(2,2);
+        Position posDestino;
+        AEstrella algoritmo;
+        Mapa mapa;
+                
         if(this.nivelBateria <= 1){
             this.nivelBateria = 100;
-            return Accion.refuel.toString();
+            comando = Accion.refuel.toString();
         }    
-        else{//Decision
-            double mejorOpcion=10000;
-            int iMejor = 0,jMejor = 0;
-            for(int i=1;i<datosScanner[i].length-1;i++){
-                for (int j=1;j<datosScanner[j].length-1;j++){
-                    if(datosRadar[i][j]==2){
-                        mejorOpcion=0;
-                        iMejor=i;
-                        jMejor=j;
+        else{
+            //Estoy en el objetivo
+            if(this.datosRadar[2][2] == 2){
+                comando = Accion.logout.toString();
+            }
+            //No estoy sobre el objetivo
+            else{
+                if(!comandos.isEmpty()){
+                    comando = comandos.get(0);
+                    comandos.remove(0);
+                }
+                else{
+                    posDestino = existeObjetivo();
+                    //Existe objetivo en el radar
+                    if(posDestino != null){
+                        mapa = new Mapa(this.datosRadar, this.datosScanner, posOrigen, posDestino);
+                        algoritmo = new AEstrella(mapa);
+                        comandos = algoritmo.rutaIda();
+
+                        //Hay camino hacia el objetivo
+                        if(!comandos.isEmpty()){
+                            comando = comandos.get(0);
+                            comandos.remove(0);
+                        }
+                        //No hay camino hacia el objetivo
+                        else{
+                            comandos = mejorObjetivo();
+                            comando = comandos.get(0);
+                            comandos.remove(0);
+                        }
                     }
-                    else if(datosRadar[i][j]==0 && 
-                            mejorOpcion>(datosScanner[i][j]+this.matrizAuxiliar[y+i-2][x+j-2])
-                            && !(i==2 && j==2)){
-                        mejorOpcion=datosScanner[i][j]+this.matrizAuxiliar[y+i-2][x+j-2];
-                        iMejor=i;
-                        jMejor=j;
+                    //No hay objetivo
+                    else{
+                        comandos = mejorObjetivo();
+                        comando = comandos.get(0);
+                        comandos.remove(0);
                     }
                 }
             }
-            System.out.println(datosScanner[jMejor][iMejor]);
-            System.out.println(this.nivelBateria);
-            Accion a = null;
-            //obtener movimiento
-            if(mejorOpcion==0){
-                System.out.println("Objetivo alcanzado.");
-                return "logout";
-            }
-            else a=obtenerMovimiento(iMejor,jMejor);
-            System.out.println(this.matrizAuxiliar[y][x]);
-            this.matrizAuxiliar[y+iMejor-2][x+jMejor-2]+=3.0;
-            this.nivelBateria--;    
-            return a.toString();
         }
         
-    }
-    
-    
-    /**
-     * @author antoniojl
-     */
-    Accion obtenerMovimiento(int iMejor, int jMejor){
-        Accion a = null;
-        if(iMejor==1){
-                    if(jMejor==1){
-                        a=Accion.moveNW;
-                    }
-                    else if(jMejor==2){
-                        a=Accion.moveN;
-                    }
-                    else if(jMejor==3){
-                        a=Accion.moveNE;
-                    }
-
-                }  
-                else if(iMejor==2){
-                    if(jMejor==1){
-                        a=Accion.moveW;
-                    }
-                    else if(jMejor==3){
-                        a=Accion.moveE;
-                    }
-                }
-                else if(iMejor==3){
-                    if(jMejor==1){
-                        a=Accion.moveSW;
-                    }
-                    else if(jMejor==2){
-                        a=Accion.moveS;
-                    }
-                    else if(jMejor==3){
-                        a=Accion.moveSE;
-                    }
-                }
-        return a;
+        return comando;
     }
     
     /**
@@ -445,7 +418,7 @@ public class GugelCar extends SingleAgent{
                 correcto = false;
             }
         }
-        return true;
+        return correcto;
     }
     
     /**
@@ -456,25 +429,78 @@ public class GugelCar extends SingleAgent{
         try {
             
             System.out.println("Recibiendo traza");
-            inbox = receiveACLMessage();
-            JsonObject objeto2 = Json.parse(inbox.getContent()).asObject();
-            if(objeto2.get("result").asString().equals("OK")){
+            
+            //Recibo el OK del logout
+            if(disconnect){
                 inbox = receiveACLMessage();
-                JsonObject objeto = Json.parse(inbox.getContent()).asObject();
-                JsonArray ja=objeto.get("trace").asArray();
-                byte data[]=new byte[ja.size()];
-                for(int i=0;i<data.length;i++){
-                    data[i]=(byte) ja.get(i).asInt();
-                }
-                FileOutputStream fos=new FileOutputStream("images/traza-"+this.map+".png");
-                fos.write(data);
-                fos.close();
-                System.out.println("Traza Guardada");
+                JsonObject objeto2 = Json.parse(inbox.getContent()).asObject();
             }
+            
+            //Tanto como si me he chocado como si he hecho logout, genero imagen
+            inbox = receiveACLMessage();
+            JsonObject objeto = Json.parse(inbox.getContent()).asObject();
+            JsonArray ja = objeto.get("trace").asArray();
+            byte data[] = new byte[ja.size()];
+            for(int i = 0;i < data.length; i++){
+                data[i] = (byte) ja.get(i).asInt();
+            }
+            FileOutputStream fos=new FileOutputStream("images/traza-"+this.map+".png");
+            fos.write(data);
+            fos.close();
+            System.out.println("Traza Guardada");
+            
         } catch (InterruptedException ex) {
             Logger.getLogger(GugelCar.class.getName()).log(Level.SEVERE, null, ex);
         }
 
+    }
+    
+    private Position existeObjetivo(){
+        TreeMap<Double,Position> lista = new TreeMap();
+        Position posOrigen = new Position(2,2);
+        Position posDestino = null;
+        
+        for (int i = 0; i < 5; ++i){
+            for (int j = 0; j < 5; ++j){
+                if(this.datosRadar[i][j] == 2){
+                    lista.put(posOrigen.distancia(new Position(i,j)), new Position(i,j));
+                }
+            }
+        }
+        
+        if(lista.firstEntry() != null){
+            posDestino = lista.firstEntry().getValue();
+        }
+        
+        return posDestino;
+    }
+    
+    private ArrayList<String> mejorObjetivo(){
+        TreeMap<Double, Position> lista = new TreeMap();
+        ArrayList<String> ruta = null;
+        Position posOrigen = new Position(2, 2);
+        Mapa mapa;
+        AEstrella algoritmo;
+        
+        //Almaceno solo las posiciones que no están ocupadas
+        for (int i = 0; i < 5; ++i){
+            for (int j = 0; j < 5; ++j){
+                if(this.datosRadar[i][j] == 0){
+                    lista.put(this.datosScanner[i][j], new Position(i,j));
+                }
+            }
+        }
+        
+        //Pruebo para cada posicion si existe camino de menor a mayor distancia
+        for(Map.Entry<Double,Position> entry : lista.entrySet()) {
+            mapa = new Mapa(this.datosRadar, this.datosScanner, posOrigen, entry.getValue());
+            algoritmo = new AEstrella(mapa);
+            ruta = algoritmo.rutaIda();
+            if(!ruta.isEmpty())
+                return ruta;
+        }
+        
+        return ruta;
     }
     
     

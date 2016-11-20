@@ -17,9 +17,11 @@ public class Scanner extends SingleAgent{
     private int status;
     private ACLMessage inbox;
     private ACLMessage outbox;
+    private String controlador;
     
-    public Scanner(AgentID aid) throws Exception{
+    public Scanner(AgentID aid, String controlador) throws Exception{
         super(aid);
+        this.controlador = controlador;
     }
     
     @Override
@@ -61,7 +63,7 @@ public class Scanner extends SingleAgent{
                 case ENVIAR:
                    outbox = new ACLMessage();
                    outbox.setSender(this.getAid());
-                   outbox.addReceiver(new AgentID("Car"));
+                   outbox.addReceiver(new AgentID(controlador));
                    outbox.setContent(inbox.getContent());
                    this.send(outbox);
                    status = ESCUCHAR;

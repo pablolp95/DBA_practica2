@@ -17,16 +17,17 @@ public class Main {
     
     public static void main(String [ ] args) throws Exception
     {   
-        String nombreRadar = "agenteRadar4";
-        String nombreScanner = "agenteScanner4";
-        String nombreGPS = "agenteGPS4";
-        String map = "map10";
+        String nombre = "Car";
+        String nombreRadar = "agenteRadar13";
+        String nombreScanner = "agenteScanner13";
+        String nombreGPS = "agenteGPS13";
+        String map = "map2";
 
         AgentsConnection.connect("isg2.ugr.es", 6000, "Girtab", "Gelman", "Orion", false);
-        GugelCar car = new GugelCar(new AgentID("Car"), nombreRadar, nombreScanner, nombreGPS, map);
-        GPS gps = new GPS(new AgentID(nombreGPS));
-        Radar radar = new Radar(new AgentID(nombreRadar));
-        Scanner scanner = new Scanner(new AgentID(nombreScanner));
+        GugelCar car = new GugelCar(new AgentID(nombre), nombreRadar, nombreScanner, nombreGPS, map);
+        GPS gps = new GPS(new AgentID(nombreGPS), nombre);
+        Radar radar = new Radar(new AgentID(nombreRadar), nombre);
+        Scanner scanner = new Scanner(new AgentID(nombreScanner), nombre);
         
         car.start();
         gps.start();

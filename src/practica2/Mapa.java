@@ -375,7 +375,8 @@ public class Mapa {
     }
     
     public boolean objetivoAlcanzado(){
-        return posOrigen.equals(posDestino);
+        boolean equal = posOrigen.equals(posDestino);
+        return equal;
     }
     
     public boolean equals(Mapa other){
