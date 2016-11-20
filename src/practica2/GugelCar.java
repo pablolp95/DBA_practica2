@@ -13,12 +13,17 @@ import com.eclipsesource.json.JsonValue;
 import es.upv.dsic.gti_ia.core.ACLMessage;
 import es.upv.dsic.gti_ia.core.AgentID;
 import es.upv.dsic.gti_ia.core.SingleAgent;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+import java.awt.image.BufferedImage;
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.imageio.ImageIO;
 /**
  *
  * @author joseccf
@@ -41,13 +46,15 @@ public class GugelCar extends SingleAgent{
     private Position position;
     private boolean conectedNow;
     double mejorOpcion;
+    private VentanaPrincipal v;
     
     /* @author pablolp
      * @author joseccf
      * @author antoniojl
+     * @author josepv
      */
     
-    public GugelCar(AgentID aid, String nombreRadar, String nombreScanner, String nombreGPS, String map) throws Exception {
+    public GugelCar(AgentID aid, String nombreRadar, String nombreScanner, String nombreGPS, String map, VentanaPrincipal vent) throws Exception {
             super(aid);
             this.agenteRadar = nombreRadar;
             this.agenteGPS = nombreGPS;
@@ -62,6 +69,7 @@ public class GugelCar extends SingleAgent{
                     this.matrizAuxiliar[i][j]=(float) -10.0;
                 }
             }
+            this.v = vent;
     }
     
     /**
@@ -464,6 +472,7 @@ public class GugelCar extends SingleAgent{
     
     /**
      * @author antoniojl
+     * @author josepv
      */
     void generarImagen() throws FileNotFoundException, IOException{
         ACLMessage inbox;
@@ -484,6 +493,23 @@ public class GugelCar extends SingleAgent{
                 fos.write(data);
                 fos.close();
                 System.out.println("Traza Guardada");
+                try {
+                    File f; 
+                    f = new File("images/traza-"+map+".png");
+                    BufferedImage img = ImageIO.read(f);                    
+                    int w = img.getWidth();
+                    int h = img.getHeight();
+                    BufferedImage imagenRedimensionada = new BufferedImage(w*3, h*3, img.getType());
+                    Graphics2D g = imagenRedimensionada.createGraphics();
+                    g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+                    g.drawImage(img, 0, 0, w*3, h*3, 0, 0, w, h, null);
+                    g.dispose();
+                    VentanaTraza traza = new VentanaTraza();
+                    traza.panelTraza1.setImage(imagenRedimensionada);
+                    v.add(traza);
+                    traza.setVisible(true);
+                    
+                } catch(Exception ex){ System.err.println("Error al leer la imagen");}
             }
         } catch (InterruptedException ex) {
             Logger.getLogger(GugelCar.class.getName()).log(Level.SEVERE, null, ex);

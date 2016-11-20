@@ -20,10 +20,18 @@ public class Main {
         String nombreRadar = "agenteRadar4";
         String nombreScanner = "agenteScanner4";
         String nombreGPS = "agenteGPS4";
-        String map = "map10";
+       VentanaPrincipal v = new VentanaPrincipal();
+        v.setVisible(true);
+        //String map = "map1";
+        String map = "-";
+        do{
+        map = v.mapa.getSelectedItem().toString();
+        System.out.println(map);
+        }
+        while(map == "-");
 
         AgentsConnection.connect("isg2.ugr.es", 6000, "Girtab", "Gelman", "Orion", false);
-        GugelCar car = new GugelCar(new AgentID("Car"), nombreRadar, nombreScanner, nombreGPS, map);
+        GugelCar car = new GugelCar(new AgentID("Car"), nombreRadar, nombreScanner, nombreGPS, map, v);
         GPS gps = new GPS(new AgentID(nombreGPS));
         Radar radar = new Radar(new AgentID(nombreRadar));
         Scanner scanner = new Scanner(new AgentID(nombreScanner));
