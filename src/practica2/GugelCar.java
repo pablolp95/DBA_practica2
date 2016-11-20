@@ -31,7 +31,7 @@ public class GugelCar extends SingleAgent{
     private float matrizAuxiliar[][];
     private boolean exit;
     private boolean connected;
-    private int nivelBateria;
+    private int nivelBateria,contadorPasos;
     private int status;
     private String key;
     private String agenteRadar, agenteScanner, agenteGPS;
@@ -40,6 +40,7 @@ public class GugelCar extends SingleAgent{
     private String map;
     private Position position;
     private boolean conectedNow;
+    double mejorOpcion;
     
     /* @author pablolp
      * @author joseccf
@@ -74,6 +75,8 @@ public class GugelCar extends SingleAgent{
         System.out.println("Agente(" +this.getName()+") Iniciando");
         status = IDENTIFICARSE;
         nivelBateria = 0;
+        contadorPasos=0;
+        mejorOpcion=100000;
         exit = false;
         connected = false;
         
@@ -194,15 +197,15 @@ public class GugelCar extends SingleAgent{
                         JsonValue value = member.getValue();
                         switch (name) {
                             case "radar":
-                                System.out.println("Contenido del sensor radar: " + inbox.getContent());
+                               // System.out.println("Contenido del sensor radar: " + inbox.getContent());
                                 correcto = recibirRadar(inbox);
                                 break;
                             case "scanner":
-                                System.out.println("Contenido del sensor scanner: " + inbox.getContent());
+                                //System.out.println("Contenido del sensor scanner: " + inbox.getContent());
                                 correcto = recibirScanner(inbox);
                                 break;
                             case "gps":
-                                System.out.println("Contenido del sensor GPS: " + inbox.getContent());
+                                //System.out.println("Contenido del sensor GPS: " + inbox.getContent());
                                 correcto = recibirGPS(inbox);
                                 break;
                             default:
@@ -229,22 +232,31 @@ public class GugelCar extends SingleAgent{
      * @author antoniojl
      */
     String decidirMovimiento(){
+        double mejorOpcion2=1000000;
+        int iMejor2 = 0,jMejor2 = 0;
+        
         int x=this.position.getX(),y=this.position.getY();
-        if(this.nivelBateria <= 1){
+        if(mejorOpcion==-10000){
+            System.out.println("Objetivo alcanzado.");
+            System.out.println("Pasos realizados: "+this.contadorPasos);
+            return "logout";
+        }
+        else if(this.nivelBateria <= 1){
             this.nivelBateria = 100;
+            contadorPasos++;
             return Accion.refuel.toString();
         }    
         else{//Decision
-            double mejorOpcion=10000;
+            mejorOpcion=100000;
             int iMejor = 0,jMejor = 0;
             for(int i=1;i<datosScanner[i].length-1;i++){
                 for (int j=1;j<datosScanner[j].length-1;j++){
                     if(datosRadar[i][j]==2){
-                        mejorOpcion=0;
+                        mejorOpcion=-10000;
                         iMejor=i;
                         jMejor=j;
                     }
-                    else if(datosRadar[i][j]==0 && 
+                    else if(datosRadar[i][j]!=1 && 
                             mejorOpcion>(datosScanner[i][j]+this.matrizAuxiliar[y+i-2][x+j-2])
                             && !(i==2 && j==2)){
                         mejorOpcion=datosScanner[i][j]+this.matrizAuxiliar[y+i-2][x+j-2];
@@ -252,19 +264,21 @@ public class GugelCar extends SingleAgent{
                         jMejor=j;
                     }
                 }
+
             }
-            System.out.println(datosScanner[jMejor][iMejor]);
+
+            System.out.println(datosScanner[iMejor][jMejor]);
             System.out.println(this.nivelBateria);
             Accion a = null;
-            //obtener movimiento
-            if(mejorOpcion==0){
-                System.out.println("Objetivo alcanzado.");
-                return "logout";
+            a=obtenerMovimiento(iMejor,jMejor);
+            System.out.println(this.matrizAuxiliar[y+iMejor-2][x+jMejor-2]);
+            System.out.println(this.mejorOpcion);
+            if(map=="map2"){
+                this.matrizAuxiliar[y+iMejor-2][x+jMejor-2]+=2.0;
             }
-            else a=obtenerMovimiento(iMejor,jMejor);
-            System.out.println(this.matrizAuxiliar[y][x]);
-            this.matrizAuxiliar[y+iMejor-2][x+jMejor-2]+=3.0;
+            else this.matrizAuxiliar[y+iMejor-2][x+jMejor-2]+=10.0;
             this.nivelBateria--;    
+            contadorPasos++;
             return a.toString();
         }
         
@@ -277,36 +291,36 @@ public class GugelCar extends SingleAgent{
     Accion obtenerMovimiento(int iMejor, int jMejor){
         Accion a = null;
         if(iMejor==1){
-                    if(jMejor==1){
-                        a=Accion.moveNW;
-                    }
-                    else if(jMejor==2){
-                        a=Accion.moveN;
-                    }
-                    else if(jMejor==3){
-                        a=Accion.moveNE;
-                    }
+                if(jMejor==1){
+                    a=Accion.moveNW;
+                }
+                else if(jMejor==2){
+                    a=Accion.moveN;
+                }
+                else if(jMejor==3){
+                    a=Accion.moveNE;
+                }
 
-                }  
-                else if(iMejor==2){
-                    if(jMejor==1){
-                        a=Accion.moveW;
-                    }
-                    else if(jMejor==3){
-                        a=Accion.moveE;
-                    }
+            }  
+            else if(iMejor==2){
+                if(jMejor==1){
+                    a=Accion.moveW;
                 }
-                else if(iMejor==3){
-                    if(jMejor==1){
-                        a=Accion.moveSW;
-                    }
-                    else if(jMejor==2){
-                        a=Accion.moveS;
-                    }
-                    else if(jMejor==3){
-                        a=Accion.moveSE;
-                    }
+                else if(jMejor==3){
+                    a=Accion.moveE;
                 }
+            }
+            else if(iMejor==3){
+                if(jMejor==1){
+                    a=Accion.moveSW;
+                }
+                else if(jMejor==2){
+                    a=Accion.moveS;
+                }
+                else if(jMejor==3){
+                    a=Accion.moveSE;
+                }
+            }
         return a;
     }
     
