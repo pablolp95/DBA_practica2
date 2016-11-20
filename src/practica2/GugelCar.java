@@ -64,9 +64,16 @@ public class GugelCar extends SingleAgent{
             this.map = map;
             this.position = new Position();
             this.matrizAuxiliar = new float [1000][1000];
-            for(int i=0;i<1000;i++){
-                for(int j=0;j<1000;j++){
-                    this.matrizAuxiliar[i][j]=(float) -10.0;
+            this.status = IDENTIFICARSE;
+            this.nivelBateria = 0;
+            this.contadorPasos = 0;
+            this.mejorOpcion = 100000;
+            this.exit = false;
+            this.connected = false;
+            
+            for(int i = 0; i < 1000; i++){
+                for(int j = 0; j < 1000; j++){
+                    this.matrizAuxiliar[i][j] = (float) -10.0;
                 }
             }
             this.v = vent;
@@ -80,14 +87,7 @@ public class GugelCar extends SingleAgent{
      */
     @Override
     public void init(){
-        System.out.println("Agente(" +this.getName()+") Iniciando");
-        status = IDENTIFICARSE;
-        nivelBateria = 0;
-        contadorPasos=0;
-        mejorOpcion=100000;
-        exit = false;
-        connected = false;
-        
+        System.out.println("Agente(" +this.getName()+") Iniciando");       
     }
 
     /**
@@ -118,12 +118,12 @@ public class GugelCar extends SingleAgent{
                     
                 case PROCESAR:
                     comando = decidirMovimiento();
-                    //comando = "logout";
                     status = ENVIAR;
                     break;
                     
                 case ENVIAR:
                     enviarComando(comando);
+                    System.out.println("Comando enviado:" + comando);
                     if(comando.equals("logout")){
                         status = FINALIZAR;
                         System.out.println("Notificando desconexión");
@@ -193,7 +193,7 @@ public class GugelCar extends SingleAgent{
         boolean correcto = true;
         ACLMessage inbox;
         try {
-            for (int i = 0; i<4 && correcto; ++i){
+            for (int i = 0; i < 4 && correcto; ++i){
                 inbox = receiveACLMessage();
                 if(inbox.getContent().equals("CRASHED")){
                     correcto = false;
@@ -240,56 +240,61 @@ public class GugelCar extends SingleAgent{
      * @author antoniojl
      */
     String decidirMovimiento(){
-        double mejorOpcion2=1000000;
-        int iMejor2 = 0,jMejor2 = 0;
+        String comando = null;
+        int xGPS = this.position.getX();
+        int yGPS = this.position.getY();
         
-        int x=this.position.getX(),y=this.position.getY();
-        if(mejorOpcion==-10000){
+        //Si estamos situados sobre el objetivo
+        if(this.mejorOpcion == -10000){
             System.out.println("Objetivo alcanzado.");
-            System.out.println("Pasos realizados: "+this.contadorPasos);
-            return "logout";
+            System.out.println("Pasos realizados: " + this.contadorPasos);
+            comando = Accion.logout.toString();
         }
+        //Si el nivel de bateria es bajo
         else if(this.nivelBateria <= 1){
             this.nivelBateria = 100;
-            contadorPasos++;
-            return Accion.refuel.toString();
-        }    
-        else{//Decision
-            mejorOpcion=100000;
-            int iMejor = 0,jMejor = 0;
-            for(int i=1;i<datosScanner[i].length-1;i++){
-                for (int j=1;j<datosScanner[j].length-1;j++){
-                    if(datosRadar[i][j]==2){
-                        mejorOpcion=-10000;
-                        iMejor=i;
-                        jMejor=j;
+            comando = Accion.refuel.toString();
+        }
+        //Decision
+        else{
+            mejorOpcion = 100000;
+            int iMejor = 0;
+            int jMejor = 0;
+            
+            for(int i = 1; i < datosScanner[i].length-1; i++){
+                for(int j = 1; j < datosScanner[j].length-1; j++){
+                    if(this.datosRadar[i][j] == 2){
+                        this.mejorOpcion = -10000;
+                        iMejor = i;
+                        jMejor = j;
                     }
-                    else if(datosRadar[i][j]!=1 && 
-                            mejorOpcion>(datosScanner[i][j]+this.matrizAuxiliar[y+i-2][x+j-2])
-                            && !(i==2 && j==2)){
-                        mejorOpcion=datosScanner[i][j]+this.matrizAuxiliar[y+i-2][x+j-2];
-                        iMejor=i;
-                        jMejor=j;
+                    else if(this.datosRadar[i][j] != 1 && 
+                            this.mejorOpcion > (this.datosScanner[i][j] + this.matrizAuxiliar[yGPS+i][xGPS+j])
+                            && !(i == 2 && j == 2)){
+                        this.mejorOpcion = this.datosScanner[i][j] + this.matrizAuxiliar[yGPS+i][xGPS+j];
+                        iMejor = i;
+                        jMejor = j;
                     }
                 }
 
             }
 
-            System.out.println(datosScanner[iMejor][jMejor]);
-            System.out.println(this.nivelBateria);
-            Accion a = null;
-            a=obtenerMovimiento(iMejor,jMejor);
-            System.out.println(this.matrizAuxiliar[y+iMejor-2][x+jMejor-2]);
-            System.out.println(this.mejorOpcion);
-            if(map=="map2"){
-                this.matrizAuxiliar[y+iMejor-2][x+jMejor-2]+=2.0;
+
+            Accion accion = null;
+            accion = obtenerMovimiento(iMejor,jMejor);
+
+            if(map == "map2"){
+                this.matrizAuxiliar[yGPS+iMejor][xGPS+jMejor] += 2.0;
             }
-            else this.matrizAuxiliar[y+iMejor-2][x+jMejor-2]+=10.0;
+            else 
+                this.matrizAuxiliar[yGPS+iMejor][xGPS+jMejor] += 5.0;
+            
             this.nivelBateria--;    
-            contadorPasos++;
-            return a.toString();
+            this.contadorPasos++;
+            comando = accion.toString();
         }
         
+        return comando;
     }
     
     
@@ -297,39 +302,40 @@ public class GugelCar extends SingleAgent{
      * @author antoniojl
      */
     Accion obtenerMovimiento(int iMejor, int jMejor){
-        Accion a = null;
-        if(iMejor==1){
-                if(jMejor==1){
-                    a=Accion.moveNW;
-                }
-                else if(jMejor==2){
-                    a=Accion.moveN;
-                }
-                else if(jMejor==3){
-                    a=Accion.moveNE;
-                }
-
-            }  
-            else if(iMejor==2){
-                if(jMejor==1){
-                    a=Accion.moveW;
-                }
-                else if(jMejor==3){
-                    a=Accion.moveE;
-                }
+        Accion accion = null;
+        
+        if(iMejor == 1){
+            if(jMejor == 1){
+                accion = Accion.moveNW;
             }
-            else if(iMejor==3){
-                if(jMejor==1){
-                    a=Accion.moveSW;
-                }
-                else if(jMejor==2){
-                    a=Accion.moveS;
-                }
-                else if(jMejor==3){
-                    a=Accion.moveSE;
-                }
+            else if(jMejor == 2){
+                accion = Accion.moveN;
             }
-        return a;
+            else if(jMejor == 3){
+                accion = Accion.moveNE;
+            }
+        }  
+        else if(iMejor == 2){
+            if(jMejor == 1){
+                accion = Accion.moveW;
+            }
+            else if(jMejor == 3){
+                accion = Accion.moveE;
+            }
+        }
+        else if(iMejor == 3){
+            if(jMejor ==1){
+                accion = Accion.moveSW;
+            }
+            else if(jMejor==2){
+                accion = Accion.moveS;
+            }
+            else if(jMejor==3){
+                accion = Accion.moveSE;
+            }
+        }
+        
+        return accion;
     }
     
     /**
