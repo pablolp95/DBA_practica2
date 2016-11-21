@@ -20,10 +20,10 @@ public class Main {
         String nombreRadar = "agenteRadar";
         String nombreScanner = "agenteScanner";
         String nombreGPS = "agenteGPS";
-        String map = "map6";
+        String map = "map2";
 
         AgentsConnection.connect("isg2.ugr.es", 6000, "Girtab", "Gelman", "Orion", false);
-        GugelCar car = new GugelCar(new AgentID("Car"), nombreRadar, nombreScanner, nombreGPS, map, v);
+        GugelCar car = new GugelCar(new AgentID("Car"), nombreRadar, nombreScanner, nombreGPS, map);
         GPS gps = new GPS(new AgentID(nombreGPS));
         Radar radar = new Radar(new AgentID(nombreRadar));
         Scanner scanner = new Scanner(new AgentID(nombreScanner));

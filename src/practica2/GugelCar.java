@@ -59,7 +59,7 @@ public class GugelCar extends SingleAgent{
      * @author josepv
      */
     
-    public GugelCar(AgentID aid, String nombreRadar, String nombreScanner, String nombreGPS, String map, VentanaPrincipal vent) throws Exception {
+    public GugelCar(AgentID aid, String nombreRadar, String nombreScanner, String nombreGPS, String map) throws Exception {
             super(aid);
             this.agenteRadar = nombreRadar;
             this.agenteGPS = nombreGPS;
@@ -84,7 +84,6 @@ public class GugelCar extends SingleAgent{
                     this.matrizAuxiliar[i][j] = (float) 0.0;
                 }
             }
-            this.v = vent;
     }
     
     /**
