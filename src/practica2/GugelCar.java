@@ -33,7 +33,8 @@ import javax.imageio.ImageIO;
 
 public class GugelCar extends SingleAgent{
     private final int IDENTIFICARSE = 0, ESCUCHAR = 1, PROCESAR = 2, ENVIAR = 3, FINALIZAR = 4;
-    private float matrizAuxiliar[][];
+    private final int SUR = 0, NORTE = 1, ESTE = 3, OESTE = 4, NADA = 5;
+    private double matrizAuxiliar[][];
     private boolean exit;
     private boolean connected;
     private int nivelBateria,contadorPasos;
@@ -45,8 +46,12 @@ public class GugelCar extends SingleAgent{
     private String map;
     private Position position;
     private boolean conectedNow;
-    double mejorOpcion;
-    private VentanaPrincipal v;
+    private double mejorOpcion;
+    private int filaRecorrida;
+    private int columnaRecorrida;
+    private int dirVertical;
+    private int dirHorizontal;
+    private boolean disconnect;
     
     /* @author pablolp
      * @author joseccf
@@ -63,17 +68,20 @@ public class GugelCar extends SingleAgent{
             this.datosScanner = new double[5][5];
             this.map = map;
             this.position = new Position();
-            this.matrizAuxiliar = new float [1000][1000];
+            this.matrizAuxiliar = new double [1000][1000];
             this.status = IDENTIFICARSE;
             this.nivelBateria = 0;
             this.contadorPasos = 0;
             this.mejorOpcion = 100000;
             this.exit = false;
             this.connected = false;
+            this.dirHorizontal = NADA;
+            this.dirVertical = NADA;
+            this.disconnect = false;
             
             for(int i = 0; i < 1000; i++){
                 for(int j = 0; j < 1000; j++){
-                    this.matrizAuxiliar[i][j] = (float) -10.0;
+                    this.matrizAuxiliar[i][j] = (float) 0.0;
                 }
             }
             this.v = vent;
@@ -117,7 +125,11 @@ public class GugelCar extends SingleAgent{
                     break;
                     
                 case PROCESAR:
-                    comando = decidirMovimiento();
+                    /*if(contadorPasos == 10){
+                        comando = Accion.logout.toString();
+                    }
+                    else*/
+                        comando = decidirMovimiento();
                     status = ENVIAR;
                     break;
                     
@@ -126,10 +138,12 @@ public class GugelCar extends SingleAgent{
                     System.out.println("Comando enviado:" + comando);
                     if(comando.equals("logout")){
                         status = FINALIZAR;
+                        disconnect = true;
                         System.out.println("Notificando desconexión");
                     }
-                    else
+                    else{
                         status = ESCUCHAR;
+                    }
                     break;
                     
                 case FINALIZAR:
@@ -181,58 +195,7 @@ public class GugelCar extends SingleAgent{
         outbox.setReceiver(new AgentID("Girtab"));
         outbox.setContent(mensaje);
         this.send(outbox);
-    }
-    
-    /* @author pablolp
-     * @author joseccf
-     * @author antoniojl
-     */
-    
-    boolean recibirMensajes(){
-        JsonObject objeto;
-        boolean correcto = true;
-        ACLMessage inbox;
-        try {
-            for (int i = 0; i < 4 && correcto; ++i){
-                inbox = receiveACLMessage();
-                if(inbox.getContent().equals("CRASHED")){
-                    correcto = false;
-                }
-                else{
-                    objeto = Json.parse(inbox.getContent()).asObject();
-                    for (Member member : objeto) {
-                        String name = member.getName();
-                        JsonValue value = member.getValue();
-                        switch (name) {
-                            case "radar":
-                               // System.out.println("Contenido del sensor radar: " + inbox.getContent());
-                                correcto = recibirRadar(inbox);
-                                break;
-                            case "scanner":
-                                //System.out.println("Contenido del sensor scanner: " + inbox.getContent());
-                                correcto = recibirScanner(inbox);
-                                break;
-                            case "gps":
-                                //System.out.println("Contenido del sensor GPS: " + inbox.getContent());
-                                correcto = recibirGPS(inbox);
-                                break;
-                            default:
-                                System.out.println("Mensaje recibido de controlador: " + inbox.getContent());
-                                correcto = recibirControlador(inbox);
-                                break;
-                        }
-                    }
-                    
-                }
-            }
-            
-        } catch (InterruptedException ex) {
-            Logger.getLogger(GugelCar.class.getName()).log(Level.SEVERE, null, ex);
-        }
-        return correcto;
-    }
-    
-    
+    }   
     
     /**
      * @author pablolp
@@ -257,21 +220,70 @@ public class GugelCar extends SingleAgent{
         }
         //Decision
         else{
-            mejorOpcion = 100000;
+            this.mejorOpcion = 100000;
             int iMejor = 0;
             int jMejor = 0;
+            boolean listo = false;
+            double valor;
             
-            for(int i = 1; i < datosScanner[i].length-1; i++){
-                for(int j = 1; j < datosScanner[j].length-1; j++){
+            for(int i = 1; i < datosScanner[i].length-1 && !listo; i++){
+                for(int j = 1; j < datosScanner[j].length-1 && !listo; j++){
+                    valor = 0.0;
+                    if(this.dirVertical == NORTE){
+                        switch (this.dirHorizontal) {
+                            case ESTE:
+                                if(i > 2 || j < 2)
+                                    valor = .5;
+                                break;
+                            case OESTE:
+                                if(i > 2 || j > 2)
+                                    valor = .5;
+                                break;
+                            default:
+                                if(i > 2)
+                                    valor = .5;
+                                break;
+                        }
+                    }
+                    else if (this.dirVertical == SUR){
+                        switch (this.dirHorizontal) {
+                            case ESTE:
+                                if(i < 2 || j < 2)
+                                    valor = .5;
+                                break;
+                            case OESTE:
+                                if(i < 2 || j > 2)
+                                    valor = .5;
+                                break;
+                            default:
+                                if(i < 2)
+                                    valor = .5;
+                                break;
+                        }
+                    }
+                    else{
+                        switch (this.dirHorizontal) {
+                            case ESTE:
+                                if(j < 2)
+                                    valor = .5;
+                                break;
+                            case OESTE:
+                                if(j > 2)
+                                    valor = .5;
+                                break;
+                        }
+                    }
+                    
                     if(this.datosRadar[i][j] == 2){
                         this.mejorOpcion = -10000;
                         iMejor = i;
                         jMejor = j;
+                        listo = true;
                     }
                     else if(this.datosRadar[i][j] != 1 && 
-                            this.mejorOpcion > (this.datosScanner[i][j] + this.matrizAuxiliar[yGPS+i][xGPS+j])
+                            this.mejorOpcion > (this.datosScanner[i][j] + this.matrizAuxiliar[yGPS+i][xGPS+j] + valor)
                             && !(i == 2 && j == 2)){
-                        this.mejorOpcion = this.datosScanner[i][j] + this.matrizAuxiliar[yGPS+i][xGPS+j];
+                        this.mejorOpcion = this.datosScanner[i][j] + this.matrizAuxiliar[yGPS+i][xGPS+j] + valor;
                         iMejor = i;
                         jMejor = j;
                     }
@@ -284,7 +296,7 @@ public class GugelCar extends SingleAgent{
             accion = obtenerMovimiento(iMejor,jMejor);
 
             if(map == "map2"){
-                this.matrizAuxiliar[yGPS+iMejor][xGPS+jMejor] += 2.0;
+                this.matrizAuxiliar[yGPS+iMejor][xGPS+jMejor] += 5.0;
             }
             else 
                 this.matrizAuxiliar[yGPS+iMejor][xGPS+jMejor] += 5.0;
@@ -305,33 +317,44 @@ public class GugelCar extends SingleAgent{
         Accion accion = null;
         
         if(iMejor == 1){
+            this.dirVertical = NORTE;
             if(jMejor == 1){
                 accion = Accion.moveNW;
+                this.dirHorizontal = OESTE;
             }
             else if(jMejor == 2){
                 accion = Accion.moveN;
+                //this.dirHorizontal = NADA;
             }
             else if(jMejor == 3){
                 accion = Accion.moveNE;
+                this.dirHorizontal = ESTE;
             }
         }  
         else if(iMejor == 2){
+            //this.dirVertical = NADA;
             if(jMejor == 1){
                 accion = Accion.moveW;
+                this.dirHorizontal = OESTE;
             }
             else if(jMejor == 3){
                 accion = Accion.moveE;
+                this.dirHorizontal = ESTE;
             }
         }
         else if(iMejor == 3){
+            this.dirVertical = SUR;
             if(jMejor ==1){
                 accion = Accion.moveSW;
+                this.dirHorizontal = OESTE;
             }
             else if(jMejor==2){
                 accion = Accion.moveS;
+                //this.dirHorizontal = NADA;
             }
             else if(jMejor==3){
                 accion = Accion.moveSE;
+                this.dirHorizontal = ESTE;
             }
         }
         
@@ -380,9 +403,52 @@ public class GugelCar extends SingleAgent{
     
     /* @author pablolp
      * @author joseccf
+     * @author antoniojl
+     */
+    boolean recibirMensajes(){
+        JsonObject objeto;
+        boolean correcto = true;
+        ACLMessage inbox;
+        try {
+            for (int i = 0; i < 4 && correcto; ++i){
+                inbox = receiveACLMessage();
+
+                objeto = Json.parse(inbox.getContent()).asObject();
+                for (Member member : objeto) {
+                    String name = member.getName();
+                    JsonValue value = member.getValue();
+                    switch (name) {
+                        case "radar":
+                            System.out.println("Contenido del sensor radar: " + inbox.getContent());
+                            correcto = recibirRadar(inbox);
+                            break;
+                        case "scanner":
+                            System.out.println("Contenido del sensor scanner: " + inbox.getContent());
+                            correcto = recibirScanner(inbox);
+                            break;
+                        case "gps":
+                            System.out.println("Contenido del sensor GPS: " + inbox.getContent());
+                            correcto = recibirGPS(inbox);
+                            break;
+                        default:
+                            System.out.println("Mensaje recibido de controlador: " + inbox.getContent());
+                            correcto = recibirControlador(inbox);
+                            break;
+                    }
+                }
+            }
+            
+        } catch (InterruptedException ex) {
+            Logger.getLogger(GugelCar.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        return correcto;
+    }
+    
+    /* @author pablolp
+     * @author joseccf
      *
      */
-        boolean recibirRadar(ACLMessage inbox){
+    boolean recibirRadar(ACLMessage inbox){
         if(inbox.getContent().equals("CRASHED")){
             return false;
         }
@@ -473,7 +539,7 @@ public class GugelCar extends SingleAgent{
                 correcto = false;
             }
         }
-        return true;
+        return correcto;
     }
     
     /**
@@ -485,38 +551,26 @@ public class GugelCar extends SingleAgent{
         try {
             
             System.out.println("Recibiendo traza");
-            inbox = receiveACLMessage();
-            JsonObject objeto2 = Json.parse(inbox.getContent()).asObject();
-            if(objeto2.get("result").asString().equals("OK")){
+            
+            //Recibo el OK del logout
+            if(disconnect){
                 inbox = receiveACLMessage();
-                JsonObject objeto = Json.parse(inbox.getContent()).asObject();
-                JsonArray ja=objeto.get("trace").asArray();
-                byte data[]=new byte[ja.size()];
-                for(int i=0;i<data.length;i++){
-                    data[i]=(byte) ja.get(i).asInt();
-                }
-                FileOutputStream fos=new FileOutputStream("images/traza-"+this.map+".png");
-                fos.write(data);
-                fos.close();
-                System.out.println("Traza Guardada");
-                try {
-                    File f; 
-                    f = new File("images/traza-"+map+".png");
-                    BufferedImage img = ImageIO.read(f);                    
-                    int w = img.getWidth();
-                    int h = img.getHeight();
-                    BufferedImage imagenRedimensionada = new BufferedImage(w*3, h*3, img.getType());
-                    Graphics2D g = imagenRedimensionada.createGraphics();
-                    g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
-                    g.drawImage(img, 0, 0, w*3, h*3, 0, 0, w, h, null);
-                    g.dispose();
-                    VentanaTraza traza = new VentanaTraza();
-                    traza.panelTraza1.setImage(imagenRedimensionada);
-                    v.add(traza);
-                    traza.setVisible(true);
-                    
-                } catch(Exception ex){ System.err.println("Error al leer la imagen");}
+                JsonObject objeto2 = Json.parse(inbox.getContent()).asObject();
             }
+            
+            //Tanto como si me he chocado como si he hecho logout, genero imagen
+            inbox = receiveACLMessage();
+            JsonObject objeto = Json.parse(inbox.getContent()).asObject();
+            JsonArray ja = objeto.get("trace").asArray();
+            byte data[] = new byte[ja.size()];
+            for(int i = 0;i < data.length; i++){
+                data[i] = (byte) ja.get(i).asInt();
+            }
+            FileOutputStream fos=new FileOutputStream("images/traza-"+this.map+".png");
+            fos.write(data);
+            fos.close();
+            System.out.println("Traza Guardada");
+            
         } catch (InterruptedException ex) {
             Logger.getLogger(GugelCar.class.getName()).log(Level.SEVERE, null, ex);
         }
