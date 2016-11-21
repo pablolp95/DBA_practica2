@@ -33,7 +33,7 @@ import javax.imageio.ImageIO;
 
 public class GugelCar extends SingleAgent{
     private final int IDENTIFICARSE = 0, ESCUCHAR = 1, PROCESAR = 2, ENVIAR = 3, FINALIZAR = 4;
-    private final int SUR = 0, NORTE = 1, ESTE = 3, OESTE = 4, NADA = 5;
+    private final int NADA = 0, SUR = 1, NORTE = 2, ESTE = 3, OESTE = 4, NOROESTE = 5, NORESTE = 6, SUDOESTE = 7, SUDESTE = 8;
     private double matrizAuxiliar[][];
     private boolean exit;
     private boolean connected;
@@ -49,8 +49,7 @@ public class GugelCar extends SingleAgent{
     private double mejorOpcion;
     private int filaRecorrida;
     private int columnaRecorrida;
-    private int dirVertical;
-    private int dirHorizontal;
+    private int direccion;
     private boolean disconnect;
     
     /* @author pablolp
@@ -75,13 +74,12 @@ public class GugelCar extends SingleAgent{
             this.mejorOpcion = 100000;
             this.exit = false;
             this.connected = false;
-            this.dirHorizontal = NADA;
-            this.dirVertical = NADA;
+            this.direccion = NADA;
             this.disconnect = false;
             
             for(int i = 0; i < 1000; i++){
                 for(int j = 0; j < 1000; j++){
-                    this.matrizAuxiliar[i][j] = (float) 0.0;
+                    this.matrizAuxiliar[i][j] = 0.0;
                 }
             }
     }
@@ -124,10 +122,11 @@ public class GugelCar extends SingleAgent{
                     break;
                     
                 case PROCESAR:
-                    /*if(contadorPasos == 10){
+                    System.out.println(contadorPasos);
+                    if(contadorPasos == 89){
                         comando = Accion.logout.toString();
                     }
-                    else*/
+                    else
                         comando = decidirMovimiento();
                     status = ENVIAR;
                     break;
@@ -205,9 +204,14 @@ public class GugelCar extends SingleAgent{
         String comando = null;
         int xGPS = this.position.getX();
         int yGPS = this.position.getY();
+        double mejorValor = 10000.0;
+        int mejorCol = 0;
+        int mejorFila = 0;
+        int fila;
+        int col;
         
         //Si estamos situados sobre el objetivo
-        if(this.mejorOpcion == -10000){
+        if(this.datosRadar[2][2] == 2){
             System.out.println("Objetivo alcanzado.");
             System.out.println("Pasos realizados: " + this.contadorPasos);
             comando = Accion.logout.toString();
@@ -219,90 +223,192 @@ public class GugelCar extends SingleAgent{
         }
         //Decision
         else{
-            this.mejorOpcion = 100000;
-            int iMejor = 0;
-            int jMejor = 0;
-            boolean listo = false;
-            double valor;
-            
-            for(int i = 1; i < datosScanner[i].length-1 && !listo; i++){
-                for(int j = 1; j < datosScanner[j].length-1 && !listo; j++){
-                    valor = 0.0;
-                    if(this.dirVertical == NORTE){
-                        switch (this.dirHorizontal) {
-                            case ESTE:
-                                if(i > 2 || j < 2)
-                                    valor = .5;
-                                break;
-                            case OESTE:
-                                if(i > 2 || j > 2)
-                                    valor = .5;
-                                break;
-                            default:
-                                if(i > 2)
-                                    valor = .5;
-                                break;
+            if(hayPared()){
+                if(this.direccion == ESTE || this.direccion == OESTE){
+                    if(this.datosRadar[1][2] != 1 && this.datosRadar[3][2] != 1){
+                        if(this.datosScanner[1][2] < this.datosScanner[3][2]){
+                            comando = Accion.moveN.toString();
+                            this.direccion = NORTE;
+                        }
+                        else{
+                            comando = Accion.moveS.toString();
+                            this.direccion = SUR;
                         }
                     }
-                    else if (this.dirVertical == SUR){
-                        switch (this.dirHorizontal) {
-                            case ESTE:
-                                if(i < 2 || j < 2)
-                                    valor = .5;
-                                break;
-                            case OESTE:
-                                if(i < 2 || j > 2)
-                                    valor = .5;
-                                break;
-                            default:
-                                if(i < 2)
-                                    valor = .5;
-                                break;
-                        }
+                    else if(this.datosRadar[1][2] != 1){
+                        comando = Accion.moveN.toString();
+                        this.direccion = NORTE;
                     }
                     else{
-                        switch (this.dirHorizontal) {
-                            case ESTE:
-                                if(j < 2)
-                                    valor = .5;
-                                break;
-                            case OESTE:
-                                if(j > 2)
-                                    valor = .5;
-                                break;
-                        }
-                    }
-                    
-                    if(this.datosRadar[i][j] == 2){
-                        this.mejorOpcion = -10000;
-                        iMejor = i;
-                        jMejor = j;
-                        listo = true;
-                    }
-                    else if(this.datosRadar[i][j] != 1 && 
-                            this.mejorOpcion > (this.datosScanner[i][j] + this.matrizAuxiliar[yGPS+i][xGPS+j] + valor)
-                            && !(i == 2 && j == 2)){
-                        this.mejorOpcion = this.datosScanner[i][j] + this.matrizAuxiliar[yGPS+i][xGPS+j] + valor;
-                        iMejor = i;
-                        jMejor = j;
+                        comando = Accion.moveS.toString();
+                        this.direccion = SUR;
                     }
                 }
-
+                else if(this.direccion == NORTE || this.direccion == SUR){
+                    if(this.datosRadar[2][1] != 1 && this.datosRadar[2][3] != 1){
+                        if(this.datosScanner[2][1] < this.datosScanner[2][3]){
+                            comando = Accion.moveW.toString();
+                            this.direccion = OESTE;
+                        }
+                        else{
+                            comando = Accion.moveE.toString();
+                            this.direccion = ESTE;
+                        }
+                    }
+                    else if(this.datosRadar[2][1] != 1){
+                        comando = Accion.moveW.toString();
+                            this.direccion = OESTE;
+                    }
+                    else{
+                        comando = Accion.moveE.toString();
+                        this.direccion = ESTE;
+                    }
+                }
             }
-
-
-            Accion accion = null;
-            accion = obtenerMovimiento(iMejor,jMejor);
-
-            if(map == "map2"){
-                this.matrizAuxiliar[yGPS+iMejor][xGPS+jMejor] += 5.0;
+            //No hay pared en mi direccion
+            else{
+                switch (this.direccion) {
+                    case NADA:
+                        for(int i = 1; i < 4; ++i){
+                            for(int j = 1; j < 4; ++j){
+                                if(this.datosRadar[i][j] != 1 && this.datosScanner[i][j] < mejorValor){
+                                    mejorValor = this.datosScanner[i][j];
+                                    mejorFila = i;
+                                    mejorCol = j;
+                                }
+                            }
+                        }   
+                        break;
+                    case SUR:
+                        mejorFila = 3;
+                        //Miro la fila de abajo
+                        for(int j = 1; j < 4; j++){
+                            if(this.datosRadar[mejorFila][j] != 1 && this.datosScanner[mejorFila][j] < mejorValor){
+                                mejorValor = this.datosScanner[mejorFila][j];
+                                mejorCol = j;
+                            }
+                        }   
+                        break;
+                    case NORTE:
+                        mejorFila = 1;
+                        //Miro la fila de arriba
+                        for(int j = 1; j < 4; j++){
+                            if(this.datosRadar[mejorFila][j] != 1 && this.datosScanner[mejorFila][j] < mejorValor){
+                                mejorValor = this.datosScanner[mejorFila][j];
+                                mejorCol = j;
+                            }
+                        }   
+                        break;
+                    case ESTE:
+                        mejorCol = 3;
+                        //Miro la fila de la dcha
+                        for(int i = 1; i < 4; i++){
+                            if(this.datosRadar[i][mejorCol] != 1 && this.datosScanner[i][mejorCol] < mejorValor){
+                                mejorValor = this.datosScanner[i][mejorCol];
+                                mejorFila = i;
+                            }
+                        }   
+                        break;
+                    case OESTE:
+                        mejorCol = 1;
+                        //Miro la fila de la izq
+                        for(int i = 1; i < 4; i++){
+                            if(this.datosRadar[i][mejorCol] != 1 && this.datosScanner[i][mejorCol] < mejorValor){
+                                mejorValor = this.datosScanner[i][mejorCol];
+                                mejorFila = i;
+                            }
+                        }   
+                        break;
+                    case NOROESTE:
+                        fila = 1;
+                        col = 1;
+                        mejorFila = 1;
+                        mejorCol = 1;
+                        //Miro las filas de arriba(Norte)
+                        for(int j = 1; j < 4; j++){
+                            if(this.datosRadar[fila][j] != 1 && this.datosScanner[fila][j] < mejorValor){
+                                mejorValor = this.datosScanner[fila][j];
+                                mejorCol = j;
+                            }
+                        }
+                        //Miro las filas de las izq(Oeste)
+                        for(int i = 1; i < 4; i++){
+                            if(this.datosRadar[i][col] != 1 && this.datosScanner[i][col] < mejorValor){
+                                mejorValor = this.datosScanner[i][col];
+                                mejorFila = i;
+                                mejorCol = 1;
+                            }
+                        } 
+                        break;
+                    case NORESTE:
+                        fila = 1;
+                        col = 3;
+                        mejorFila = 1;
+                        mejorCol = 3;
+                        //Miro las filas de arriba(Norte)
+                        for(int j = 1; j < 4; j++){
+                            if(this.datosRadar[fila][j] != 1 && this.datosScanner[fila][j] < mejorValor){
+                                mejorValor = this.datosScanner[fila][j];
+                                mejorCol = j;
+                            }
+                        }
+                        //Miro las filas de las dcha(Este)
+                        for(int i = 1; i < 4; i++){
+                            if(this.datosRadar[i][col] != 1 && this.datosScanner[i][col] < mejorValor){
+                                mejorValor = this.datosScanner[i][col];
+                                mejorFila = i;
+                                mejorCol = 3;
+                            }
+                        } 
+                        break;
+                    case SUDOESTE:
+                        fila = 3;
+                        col = 1;
+                        mejorFila = 3;
+                        mejorCol = 1;
+                        //Miro las filas de abajo(Sur)
+                        for(int j = 1; j < 4; j++){
+                            if(this.datosRadar[fila][j] != 1 && this.datosScanner[fila][j] < mejorValor){
+                                mejorValor = this.datosScanner[fila][j];
+                                mejorCol = j;
+                            }
+                        }
+                        //Miro las filas de las izq(Sudoeste)
+                        for(int i = 1; i < 4; i++){
+                            if(this.datosRadar[i][col] != 1 && this.datosScanner[i][col] < mejorValor){
+                                mejorValor = this.datosScanner[i][col];
+                                mejorFila = i;
+                                mejorCol = 1;
+                            }
+                        } 
+                        break;
+                    case SUDESTE:
+                        fila = 3;
+                        col = 3;
+                        mejorFila = 3;
+                        mejorCol = 3;
+                        //Miro las filas de abajo(Sur)
+                        for(int j = 1; j < 4; j++){
+                            if(this.datosRadar[fila][j] != 1 && this.datosScanner[fila][j] < mejorValor){
+                                mejorValor = this.datosScanner[fila][j];
+                                mejorCol = j;
+                            }
+                        }
+                        //Miro las filas de las dcha(Este)
+                        for(int i = 1; i < 4; i++){
+                            if(this.datosRadar[i][col] != 1 && this.datosScanner[i][col] < mejorValor){
+                                mejorValor = this.datosScanner[i][col];
+                                mejorFila = i;
+                                mejorCol = 3;
+                            }
+                        } 
+                        break;
+                }
+                comando = this.obtenerMovimiento(mejorFila, mejorCol);
             }
-            else 
-                this.matrizAuxiliar[yGPS+iMejor][xGPS+jMejor] += 5.0;
             
             this.nivelBateria--;    
             this.contadorPasos++;
-            comando = accion.toString();
         }
         
         return comando;
@@ -312,52 +418,72 @@ public class GugelCar extends SingleAgent{
     /**
      * @author antoniojl
      */
-    Accion obtenerMovimiento(int iMejor, int jMejor){
-        Accion accion = null;
+    String obtenerMovimiento(int iMejor, int jMejor){
+        String accion = null;
         
         if(iMejor == 1){
-            this.dirVertical = NORTE;
             if(jMejor == 1){
-                accion = Accion.moveNW;
-                this.dirHorizontal = OESTE;
+                accion = Accion.moveNW.toString();
+                this.direccion = NOROESTE;
             }
             else if(jMejor == 2){
-                accion = Accion.moveN;
-                //this.dirHorizontal = NADA;
+                accion = Accion.moveN.toString();
+                this.direccion = NORTE;
             }
             else if(jMejor == 3){
-                accion = Accion.moveNE;
-                this.dirHorizontal = ESTE;
+                accion = Accion.moveNE.toString();
+                this.direccion = NORESTE;
             }
         }  
         else if(iMejor == 2){
-            //this.dirVertical = NADA;
             if(jMejor == 1){
-                accion = Accion.moveW;
-                this.dirHorizontal = OESTE;
+                accion = Accion.moveW.toString();
+                this.direccion = OESTE;
             }
             else if(jMejor == 3){
-                accion = Accion.moveE;
-                this.dirHorizontal = ESTE;
+                accion = Accion.moveE.toString();
+                this.direccion = ESTE;
             }
         }
         else if(iMejor == 3){
-            this.dirVertical = SUR;
             if(jMejor ==1){
-                accion = Accion.moveSW;
-                this.dirHorizontal = OESTE;
+                accion = Accion.moveSW.toString();
+                this.direccion = SUDOESTE;
             }
             else if(jMejor==2){
-                accion = Accion.moveS;
-                //this.dirHorizontal = NADA;
+                accion = Accion.moveS.toString();
+                this.direccion = SUR;
             }
             else if(jMejor==3){
-                accion = Accion.moveSE;
-                this.dirHorizontal = ESTE;
+                accion = Accion.moveSE.toString();
+                this.direccion = SUDESTE;
             }
         }
         
         return accion;
+    }
+    
+    public boolean hayPared(){
+        boolean pared = false;
+        
+        if(this.direccion == ESTE){
+            if(this.datosRadar[1][3] == 1 && this.datosRadar[2][3] == 1 && this.datosRadar[3][3] == 1)
+                pared = true;
+        }
+        else if(this.direccion == OESTE){
+            if(this.datosRadar[1][1] == 1 && this.datosRadar[2][1] == 1 && this.datosRadar[3][1] == 1)
+                pared = true;
+        }
+        else if(this.direccion == NORTE){
+            if(this.datosRadar[1][1] == 1 && this.datosRadar[1][2] == 1 && this.datosRadar[1][3] == 1)
+                pared = true;
+        }
+        else if(this.direccion == SUR){
+            if(this.datosRadar[3][1] == 1 && this.datosRadar[3][2] == 1 && this.datosRadar[3][3] == 1)
+                pared = true;
+        }
+        
+        return pared;
     }
     
     /**
